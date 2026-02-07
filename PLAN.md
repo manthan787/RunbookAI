@@ -87,21 +87,28 @@ Scratchpad: Full Audit Trail
   - [x] Credential management (assume-role, profiles)
   - [x] Region handling (multi-region support)
   - [x] Multi-account support
+- [x] **Dynamic AWS Service System** (`src/providers/aws/services.ts`, `executor.ts`)
+  - [x] Declarative service definitions for 40+ AWS services
+  - [x] Dynamic SDK client loading (lazy imports)
+  - [x] Automatic pagination handling
+  - [x] Unified resource formatting
+  - [x] Services by category: compute, database, storage, networking, security, analytics, integration, devtools, ml, management
 - [x] Implement AWS query meta-router (`src/tools/registry.ts - aws_query`)
   - [x] Natural language to AWS API routing
-  - [x] Service configuration integration
+  - [x] Query by service ID or category
+  - [x] Parallel multi-service queries
   - [x] Result aggregation
-- [x] Implement AWS sub-tools (`src/tools/aws/`)
-  - [x] EC2 (describeInstances, etc.)
-  - [x] ECS (describeTasks, describeServices)
-  - [x] Lambda (listFunctions, getFunctionConfiguration)
-  - [x] RDS (describeDBInstances, describeDBClusters)
-  - [x] DynamoDB (listTables, describeTables)
-  - [x] Amplify (listApps, listBranches, listJobs)
-  - [x] EKS (listClusters, describeCluster, nodeGroups, fargateProfiles)
-  - [x] CloudWatch (getMetricStatistics, filterLogEvents, alarms)
-  - [ ] ElastiCache (describeCacheClusters)
-  - [ ] IAM (simulatePrincipalPolicy, listRolePolicies)
+- [x] Supported AWS Services (40+):
+  - **Compute**: EC2, ECS, EKS, Lambda, Lightsail, App Runner, Amplify, Batch, ECR
+  - **Database**: RDS, DynamoDB, ElastiCache, DocumentDB, Neptune, Redshift, MemoryDB
+  - **Storage**: S3, EFS, FSx, Backup
+  - **Networking**: VPC, ELB, CloudFront, Route 53, API Gateway, API Gateway V2
+  - **Security**: IAM, Secrets Manager, KMS, ACM, WAF
+  - **Integration**: SQS, SNS, EventBridge, Step Functions, Kinesis
+  - **Management**: CloudWatch, CloudWatch Logs, SSM, CloudFormation
+  - **DevTools**: CodePipeline, CodeBuild, CodeCommit
+  - **Analytics**: Athena, Glue, OpenSearch
+  - **ML**: SageMaker, Bedrock, Comprehend
 - [x] Implement AWS mutation tool (`src/tools/registry.ts - aws_mutate`)
   - [x] Approval flow integration
   - [x] Rollback command display
@@ -466,7 +473,7 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 1: Project Foundation (100%)
 - Phase 2: Core Agent Loop (100%)
 - Phase 3: Hypothesis Engine (90% - missing causal query builder)
-- Phase 4: AWS Tools (95% - EC2, ECS, Lambda, RDS, DynamoDB, Amplify, CloudWatch + mutations)
+- Phase 4: AWS Tools (100% - 40+ services with dynamic loading)
 - Phase 5: Safety Layer (90% - approval flow complete, missing Slack integration)
 - Phase 6: Observability (60% - CloudWatch alarms/logs implemented)
 - Phase 7: Incident Management (60% - PagerDuty integration implemented)
@@ -479,13 +486,15 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Service configuration system for targeted infrastructure scanning
 - Quick setup templates (ecs-rds, serverless, enterprise)
 - Interactive setup wizard (`runbook init`) with step-by-step configuration
-- DynamoDB support (listTables, describeTables, health checks)
-- Amplify support (listApps, listBranches, deployment status)
-- Service-aware aws_query tool (only queries enabled services)
+- **Dynamic AWS Service System (40+ services)**:
+  - Declarative service definitions with automatic SDK loading
+  - Query by service ID, category, or all services
+  - Parallel execution with unified result formatting
+  - Automatic pagination handling
+  - Categories: compute, database, storage, networking, security, analytics, integration, devtools, ml, management
 - Mutation approval flow with risk classification (low/medium/high/critical)
 - AWS mutations: ECS scaling, EC2 start/stop/reboot, Lambda config updates
 - Audit trail for all approved/rejected mutations
-- EKS support (listClusters, nodeGroups, fargateProfiles, health checks)
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 
@@ -495,7 +504,7 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 2. Complete skill system for deploy/scale workflows
 3. Implement causal query builder for hypothesis-targeted queries
 4. Add Slack approval integration for mutations
-5. Add ElastiCache and IAM tools
+5. Add describe operations for each service (detailed resource info)
 
 **Usage:**
 ```bash
