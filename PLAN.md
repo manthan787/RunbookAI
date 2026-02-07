@@ -176,27 +176,39 @@ Scratchpad: Full Audit Trail
 - [x] Implement knowledge types (`src/knowledge/types.ts`)
   - [x] KnowledgeDocument, KnowledgeChunk interfaces
   - [x] Source configurations
-- [ ] Implement filesystem source (`src/knowledge/sources/filesystem.ts`)
-  - [ ] Markdown parsing with frontmatter
-  - [ ] YAML support
+- [x] Implement filesystem source (`src/knowledge/sources/filesystem.ts`)
+  - [x] Markdown parsing with frontmatter
+  - [x] YAML support
   - [ ] File watching for hot reload
-- [ ] Implement chunker (`src/knowledge/indexer/chunker.ts`)
-  - [ ] Markdown-aware chunking
-  - [ ] Section preservation
-  - [ ] Metadata extraction
-- [ ] Implement embedder (`src/knowledge/indexer/embedder.ts`)
-  - [ ] OpenAI embeddings integration
-  - [ ] Batch processing
-- [ ] Implement vector store (`src/knowledge/store/vector-store.ts`)
-  - [ ] SQLite + sqlite-vss for local storage
-  - [ ] CRUD operations
-  - [ ] Similarity search
+- [x] Implement chunker (in `src/knowledge/sources/filesystem.ts`)
+  - [x] Markdown-aware chunking by sections
+  - [x] Section title preservation
+  - [x] Chunk type inference (context, procedure, command, etc.)
+- [x] Implement SQLite store (`src/knowledge/store/sqlite.ts`)
+  - [x] FTS5 full-text search
+  - [x] Document and chunk storage
+  - [x] Type and service filtering
+- [x] Implement knowledge retriever (`src/knowledge/retriever/index.ts`)
+  - [x] Sync from filesystem sources
+  - [x] Search with type/service filters
+  - [x] Organized results by knowledge type
+- [x] Implement embedder (`src/knowledge/indexer/embedder.ts`)
+  - [x] OpenAI embeddings integration (text-embedding-3-small)
+  - [x] Batch processing for efficiency
+  - [x] In-memory caching
+  - [x] Cost estimation
+- [x] Implement vector store (`src/knowledge/store/vector-store.ts`)
+  - [x] SQLite storage for embeddings
+  - [x] Cosine similarity search
+  - [x] Type and service filtering
+- [x] Implement hybrid retriever (`src/knowledge/retriever/hybrid-search.ts`)
+  - [x] Combines FTS and vector search
+  - [x] Reciprocal Rank Fusion (RRF) for merging
+  - [x] Configurable weights for each approach
 - [ ] Implement service graph (`src/knowledge/store/graph-store.ts`)
   - [ ] Service nodes and edges
   - [ ] Dependency traversal
   - [ ] Ownership lookup
-- [ ] Implement hybrid retriever (`src/knowledge/retriever/hybrid-search.ts`)
-  - [ ] Vector + keyword search
   - [ ] Service filtering
   - [ ] Type boosting
 - [ ] Implement reranker (`src/knowledge/retriever/reranker.ts`)
@@ -503,7 +515,7 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 5: Safety Layer (90% - approval flow complete, missing Slack integration)
 - Phase 6: Observability (100% - CloudWatch, Datadog, Prometheus integration)
 - Phase 7: Incident Management (100% - PagerDuty, OpsGenie, Slack complete)
-- Phase 8: Knowledge System (80% - filesystem source, SQLite store, FTS search)
+- Phase 8: Knowledge System (95% - FTS, vector embeddings, hybrid search)
 - Phase 9: Skills (100% - 7 core skills with executor and registry)
 - Phase 10: CLI Interface (90% - ask, chat, investigate, status, init wizard, config, knowledge commands)
 
@@ -547,6 +559,11 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
   - Firing alerts monitoring
   - Target health checks
   - Common metric shortcuts (CPU, memory, disk, network, K8s)
+- Knowledge system with semantic search:
+  - OpenAI embeddings for vector similarity
+  - Hybrid search (FTS + vector) with RRF fusion
+  - Batch embedding with caching
+  - Find similar past incidents and runbooks
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 
@@ -554,9 +571,9 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 
 1. Implement Slack webhook server for approval button interactions
 2. Add describe operations for AWS services (detailed resource info)
-3. Implement vector embeddings for semantic knowledge search
-4. Add service graph for dependency visualization
-5. Add custom metrics endpoint support
+3. Add service graph for dependency visualization
+4. Add file watching for hot reload of knowledge
+5. Add reranker for LLM-based relevance scoring
 
 **Usage:**
 ```bash
