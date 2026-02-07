@@ -141,8 +141,12 @@ Scratchpad: Full Audit Trail
   - [x] Monitor/alert status
   - [x] Events timeline
   - [x] Service catalog
-- [ ] Implement generic metrics interface
-  - [ ] Prometheus support (future)
+- [x] Implement generic metrics interface
+  - [x] Prometheus support
+    - [x] Instant and range queries
+    - [x] Firing alerts
+    - [x] Target health monitoring
+    - [x] Common metric shortcuts
   - [ ] Custom metrics endpoints
 
 ### Phase 7: Incident Management Integration
@@ -497,7 +501,7 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 3: Hypothesis Engine (100% - causal query builder with anti-pattern detection)
 - Phase 4: AWS Tools (100% - 40+ services with dynamic loading)
 - Phase 5: Safety Layer (90% - approval flow complete, missing Slack integration)
-- Phase 6: Observability (90% - CloudWatch + Datadog integration)
+- Phase 6: Observability (100% - CloudWatch, Datadog, Prometheus integration)
 - Phase 7: Incident Management (100% - PagerDuty, OpsGenie, Slack complete)
 - Phase 8: Knowledge System (80% - filesystem source, SQLite store, FTS search)
 - Phase 9: Skills (100% - 7 core skills with executor and registry)
@@ -538,6 +542,11 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
   - Get/list alerts and incidents
   - Add investigation notes
   - Acknowledge and close alerts
+- Prometheus integration:
+  - Instant and range PromQL queries
+  - Firing alerts monitoring
+  - Target health checks
+  - Common metric shortcuts (CPU, memory, disk, network, K8s)
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 
@@ -545,9 +554,9 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 
 1. Implement Slack webhook server for approval button interactions
 2. Add describe operations for AWS services (detailed resource info)
-3. Add Prometheus/custom metrics support
-4. Implement vector embeddings for semantic knowledge search
-5. Add service graph for dependency visualization
+3. Implement vector embeddings for semantic knowledge search
+4. Add service graph for dependency visualization
+5. Add custom metrics endpoint support
 
 **Usage:**
 ```bash

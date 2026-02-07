@@ -35,6 +35,15 @@ import {
   getDatadogSummary,
   isDatadogConfigured,
 } from './observability/datadog';
+import {
+  isPrometheusConfigured,
+  instantQuery,
+  rangeQuery,
+  getFiringAlerts,
+  getTargetHealth,
+  getQuickHealthCheck,
+  COMMON_QUERIES,
+} from './observability/prometheus';
 import { createRetriever } from '../knowledge/retriever';
 import { AWS_SERVICES, getServiceById, getAllServiceIds, CATEGORY_DESCRIPTIONS } from '../providers/aws/services';
 import { executeListOperation, executeMultiServiceQuery, getInstalledServices } from '../providers/aws/executor';
@@ -1039,8 +1048,210 @@ toolRegistry.registerCategory('aws', 'AWS Cloud Operations', [
   cloudwatchLogsTool,
 ]);
 
+/**
+ * Prometheus Query Tool
+ */
+export const prometheusTool = defineTool(
+  'prometheus',
+  `Query Prometheus for metrics, alerts, and target health.
+
+   Use for:
+   - "Show me firing Prometheus alerts"
+   - "What's the CPU usage across nodes?"
+   - "Check target health status"
+   - "Query custom metrics"
+
+   Requires PROMETHEUS_URL environment variable or config.`,
+  {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'Action to perform',
+        enum: ['query', 'range_query', 'alerts', 'targets', 'health_check', 'common'],
+      },
+      query: {
+        type: 'string',
+        description: 'PromQL query (for query/range_query actions)',
+      },
+      common_metric: {
+        type: 'string',
+        description: 'Common metric shortcut (for common action)',
+        enum: [
+          'cpu_usage',
+          'memory_usage',
+          'disk_usage',
+          'network_receive',
+          'network_transmit',
+          'request_rate',
+          'error_rate',
+          'latency_p99',
+          'latency_p95',
+          'container_cpu',
+          'container_memory',
+          'pod_ready',
+        ],
+      },
+      from_minutes: {
+        type: 'number',
+        description: 'Minutes back for range query (default: 60)',
+      },
+      step: {
+        type: 'string',
+        description: 'Step for range query (default: 1m)',
+      },
+    },
+    required: ['action'],
+  },
+  async (args) => {
+    const action = args.action as string;
+
+    if (!isPrometheusConfigured()) {
+      return {
+        error: 'Prometheus not configured',
+        hint: 'Set PROMETHEUS_URL environment variable',
+      };
+    }
+
+    try {
+      switch (action) {
+        case 'query': {
+          if (!args.query) {
+            return { error: 'Query is required for instant query' };
+          }
+          const result = await instantQuery(args.query as string);
+          return {
+            resultType: result.resultType,
+            results: result.result.map((r) => ({
+              labels: r.metric,
+              value: r.value ? parseFloat(r.value[1]) : null,
+              timestamp: r.value ? new Date(r.value[0] * 1000).toISOString() : null,
+            })),
+            count: result.result.length,
+          };
+        }
+
+        case 'range_query': {
+          if (!args.query) {
+            return { error: 'Query is required for range query' };
+          }
+          const fromMinutes = (args.from_minutes as number) || 60;
+          const step = (args.step as string) || '1m';
+          const end = new Date();
+          const start = new Date(end.getTime() - fromMinutes * 60 * 1000);
+
+          const result = await rangeQuery(args.query as string, start, end, step);
+          return {
+            resultType: result.resultType,
+            results: result.result.map((r) => ({
+              labels: r.metric,
+              points: r.values?.length || 0,
+              lastValue: r.values && r.values.length > 0 ? parseFloat(r.values[r.values.length - 1][1]) : null,
+            })),
+            count: result.result.length,
+          };
+        }
+
+        case 'alerts': {
+          const alerts = await getFiringAlerts();
+          return {
+            firingAlerts: alerts.map((a) => ({
+              name: a.alertname,
+              instance: a.instance,
+              job: a.job,
+              severity: a.severity,
+              summary: a.summary,
+              state: a.state,
+              since: a.activeAt,
+            })),
+            count: alerts.length,
+          };
+        }
+
+        case 'targets': {
+          const health = await getTargetHealth();
+          return {
+            summary: {
+              healthy: health.healthy,
+              unhealthy: health.unhealthy,
+            },
+            unhealthyTargets: health.targets
+              .filter((t) => t.health !== 'up')
+              .map((t) => ({
+                job: t.job,
+                instance: t.instance,
+                health: t.health,
+                error: t.lastError,
+                lastScrape: t.lastScrape,
+              })),
+          };
+        }
+
+        case 'health_check': {
+          const health = await getQuickHealthCheck();
+          return {
+            alertCount: health.alertCount,
+            targets: health.targetHealth,
+            topCpuUsage: health.topCpu?.map((c) => ({
+              instance: c.instance,
+              usage: `${c.value.toFixed(1)}%`,
+            })),
+            topMemoryUsage: health.topMemory?.map((m) => ({
+              instance: m.instance,
+              usage: `${m.value.toFixed(1)}%`,
+            })),
+          };
+        }
+
+        case 'common': {
+          const metricKey = args.common_metric as string;
+          const metricMap: Record<string, string> = {
+            cpu_usage: COMMON_QUERIES.cpuUsageByNode,
+            memory_usage: COMMON_QUERIES.memoryUsageByNode,
+            disk_usage: COMMON_QUERIES.diskUsage,
+            network_receive: COMMON_QUERIES.networkReceive,
+            network_transmit: COMMON_QUERIES.networkTransmit,
+            request_rate: COMMON_QUERIES.requestRate,
+            error_rate: COMMON_QUERIES.errorRate,
+            latency_p99: COMMON_QUERIES.latencyP99,
+            latency_p95: COMMON_QUERIES.latencyP95,
+            container_cpu: COMMON_QUERIES.containerCpu,
+            container_memory: COMMON_QUERIES.containerMemory,
+            pod_ready: COMMON_QUERIES.podReady,
+          };
+
+          const query = metricMap[metricKey];
+          if (!query) {
+            return {
+              error: `Unknown common metric: ${metricKey}`,
+              availableMetrics: Object.keys(metricMap),
+            };
+          }
+
+          const result = await instantQuery(query);
+          return {
+            metric: metricKey,
+            query,
+            results: result.result.map((r) => ({
+              labels: r.metric,
+              value: r.value ? parseFloat(r.value[1]) : null,
+            })),
+            count: result.result.length,
+          };
+        }
+
+        default:
+          return { error: `Unknown action: ${action}` };
+      }
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+);
+
 toolRegistry.registerCategory('observability', 'Observability & Monitoring', [
   datadogTool,
+  prometheusTool,
 ]);
 
 toolRegistry.registerCategory('knowledge', 'Knowledge Base', [
