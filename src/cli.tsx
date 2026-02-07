@@ -16,6 +16,7 @@ import { createLLMClient } from './model/llm';
 import { toolRegistry } from './tools/registry';
 import { loadConfig, validateConfig } from './utils/config';
 import { quickSetup, loadServiceConfig, ONBOARDING_PROMPTS } from './config/onboarding';
+import { SetupWizard } from './cli/setup-wizard';
 import { createRetriever } from './knowledge/retriever';
 import type { AgentEvent } from './agent/types';
 
@@ -275,20 +276,25 @@ program
   .option('-t, --template <template>', 'Use a template: ecs-rds, serverless, enterprise')
   .option('-r, --regions <regions>', 'AWS regions (comma-separated)', 'us-east-1')
   .action(async (options: { template?: string; regions?: string }) => {
-    console.log(chalk.cyan(ONBOARDING_PROMPTS.welcome));
-
     const template = options.template as 'ecs-rds' | 'serverless' | 'enterprise' | undefined;
     const regions = options.regions?.split(',').map((r) => r.trim()) || ['us-east-1'];
 
     if (template) {
+      // Use template-based quick setup
+      console.log(chalk.cyan(ONBOARDING_PROMPTS.welcome));
       console.log(chalk.blue(`Using template: ${template}`));
       console.log(chalk.blue(`Regions: ${regions.join(', ')}`));
 
       const configPath = await quickSetup(template, regions);
       console.log(chalk.green(`\nConfiguration saved to ${configPath}`));
       console.log(chalk.cyan(ONBOARDING_PROMPTS.complete));
+    } else if (process.stdout.isTTY) {
+      // Interactive setup wizard
+      render(<SetupWizard />);
     } else {
-      console.log(chalk.yellow('Interactive setup coming soon. For now, use --template:'));
+      // Non-interactive fallback
+      console.log(chalk.cyan(ONBOARDING_PROMPTS.welcome));
+      console.log(chalk.yellow('Interactive mode requires a TTY. Use --template:'));
       console.log('  runbook init --template ecs-rds');
       console.log('  runbook init --template serverless');
       console.log('  runbook init --template enterprise --regions us-east-1,us-west-2');

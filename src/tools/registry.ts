@@ -10,9 +10,12 @@ import { describeInstances } from './aws/ec2';
 import { listClusters, getAllServicesWithStatus } from './aws/ecs';
 import { listFunctions } from './aws/lambda';
 import { describeDBInstances, describeDBClusters } from './aws/rds';
+import { describeTables } from './aws/dynamodb';
+import { getAllAppsWithStatus } from './aws/amplify';
 import { getActiveAlarms, filterLogEvents, listLogGroups } from './aws/cloudwatch';
 import { getIncident, getIncidentAlerts, listIncidents, addIncidentNote } from './incident/pagerduty';
 import { createRetriever } from '../knowledge/retriever';
+import { getEnabledServices } from '../providers/aws/client';
 
 export interface ToolCategory {
   name: string;
@@ -134,6 +137,8 @@ export const awsQueryTool = defineTool(
    - "Show me the ECS services in prod"
    - "What's the status of the checkout-api Lambda?"
    - "List all Lambda functions"
+   - "Show me DynamoDB tables"
+   - "What Amplify apps are deployed?"
 
    Do NOT use for mutations - use aws_mutate instead.`,
   {
@@ -145,24 +150,42 @@ export const awsQueryTool = defineTool(
       },
       resource_type: {
         type: 'string',
-        description: 'Type of resource to query: ec2, ecs, lambda, rds, elasticache',
-        enum: ['ec2', 'ecs', 'lambda', 'rds', 'elasticache', 'all'],
+        description: 'Type of resource to query: ec2, ecs, lambda, rds, dynamodb, amplify, elasticache',
+        enum: ['ec2', 'ecs', 'lambda', 'rds', 'dynamodb', 'amplify', 'elasticache', 'all'],
       },
       region: {
         type: 'string',
         description: 'AWS region (defaults to us-east-1)',
+      },
+      account: {
+        type: 'string',
+        description: 'AWS account name (from service config, defaults to default account)',
       },
     },
     required: ['query'],
   },
   async (args) => {
     const region = args.region as string | undefined;
+    const accountName = args.account as string | undefined;
     const resourceType = (args.resource_type as string) || 'all';
     const results: Record<string, unknown> = {};
 
     try {
+      // Get enabled services from config
+      const enabled = await getEnabledServices();
+      const allCompute = enabled.compute;
+      const allDatabases = enabled.databases;
+      const allStorage = enabled.storage;
+
+      // Helper to check if a service is enabled (or if no config exists, allow all)
+      const isEnabled = (type: string, category: string[]) => {
+        // If no services are configured, allow everything (for users who haven't set up config)
+        if (category.length === 0) return true;
+        return category.includes(type);
+      };
+
       // Route based on resource type or query all
-      if (resourceType === 'ec2' || resourceType === 'all') {
+      if ((resourceType === 'ec2' || resourceType === 'all') && isEnabled('ec2', allCompute)) {
         const instances = await describeInstances(undefined, region);
         results.ec2_instances = instances.map((i) => ({
           id: i.instanceId,
@@ -174,7 +197,7 @@ export const awsQueryTool = defineTool(
         }));
       }
 
-      if (resourceType === 'ecs' || resourceType === 'all') {
+      if ((resourceType === 'ecs' || resourceType === 'all') && isEnabled('ecs', allCompute)) {
         const clusters = await listClusters(region);
         const services = await getAllServicesWithStatus(region);
         results.ecs_clusters = clusters;
@@ -188,7 +211,7 @@ export const awsQueryTool = defineTool(
         }));
       }
 
-      if (resourceType === 'lambda' || resourceType === 'all') {
+      if ((resourceType === 'lambda' || resourceType === 'all') && isEnabled('lambda', allCompute)) {
         const functions = await listFunctions(region);
         results.lambda_functions = functions.map((f) => ({
           name: f.functionName,
@@ -199,7 +222,7 @@ export const awsQueryTool = defineTool(
         }));
       }
 
-      if (resourceType === 'rds' || resourceType === 'all') {
+      if ((resourceType === 'rds' || resourceType === 'all') && isEnabled('rds', allDatabases)) {
         const [instances, clusters] = await Promise.all([
           describeDBInstances(undefined, region),
           describeDBClusters(undefined, region),
@@ -218,6 +241,42 @@ export const awsQueryTool = defineTool(
           members: c.members,
         }));
       }
+
+      if ((resourceType === 'dynamodb' || resourceType === 'all') && isEnabled('dynamodb', allDatabases)) {
+        const tables = await describeTables(undefined, accountName, region);
+        results.dynamodb_tables = tables.map((t) => ({
+          name: t.tableName,
+          status: t.tableStatus,
+          itemCount: t.itemCount,
+          sizeBytes: t.tableSizeBytes,
+          billingMode: t.billingMode,
+          keys: t.keySchema.map((k) => `${k.attributeName} (${k.keyType})`).join(', '),
+        }));
+      }
+
+      if ((resourceType === 'amplify' || resourceType === 'all') && isEnabled('amplify', allCompute)) {
+        const apps = await getAllAppsWithStatus(accountName, region);
+        results.amplify_apps = apps.map((app) => ({
+          id: app.appId,
+          name: app.name,
+          repository: app.repository,
+          platform: app.platform,
+          productionBranch: app.productionBranch?.branchName,
+          customDomains: app.customDomains,
+          branches: app.branches.map((b) => ({
+            name: b.branchName,
+            stage: b.stage,
+            status: b.status,
+          })),
+        }));
+      }
+
+      // Include info about which services were queried
+      results._meta = {
+        enabledCompute: allCompute.length > 0 ? allCompute : ['all (no config)'],
+        enabledDatabases: allDatabases.length > 0 ? allDatabases : ['all (no config)'],
+        queriedType: resourceType,
+      };
 
       return results;
     } catch (error) {

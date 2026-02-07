@@ -15,8 +15,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-amplify": "^3.985.0",
     "@aws-sdk/client-cloudwatch": "^3.600.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.600.0",
+    "@aws-sdk/client-dynamodb": "^3.985.0",
     "@aws-sdk/client-ec2": "^3.600.0",
     "@aws-sdk/client-ecs": "^3.600.0",
     "@aws-sdk/client-elasticache": "^3.600.0",

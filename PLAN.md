@@ -83,21 +83,23 @@ Scratchpad: Full Audit Trail
   - [ ] Anti-pattern detection (prevent broad data gathering)
 
 ### Phase 4: Cloud Provider Tools (AWS First)
-- [ ] Implement AWS client wrapper (`src/providers/aws/client.ts`)
-  - [ ] Credential management
-  - [ ] Region handling
-  - [ ] Error wrapping
-- [ ] Implement AWS query meta-router (`src/tools/aws/aws-query.ts`)
-  - [ ] Natural language to AWS API routing
-  - [ ] Parallel sub-tool execution
-  - [ ] Result aggregation
-- [ ] Implement AWS sub-tools (`src/tools/aws/`)
-  - [ ] EC2 (describeInstances, etc.)
-  - [ ] ECS (describeTasks, describeServices, updateService)
-  - [ ] Lambda (listFunctions, getFunctionConfiguration)
-  - [ ] RDS (describeDBInstances, describeDBClusters)
+- [x] Implement AWS client wrapper (`src/providers/aws/client.ts`)
+  - [x] Credential management (assume-role, profiles)
+  - [x] Region handling (multi-region support)
+  - [x] Multi-account support
+- [x] Implement AWS query meta-router (`src/tools/registry.ts - aws_query`)
+  - [x] Natural language to AWS API routing
+  - [x] Service configuration integration
+  - [x] Result aggregation
+- [x] Implement AWS sub-tools (`src/tools/aws/`)
+  - [x] EC2 (describeInstances, etc.)
+  - [x] ECS (describeTasks, describeServices)
+  - [x] Lambda (listFunctions, getFunctionConfiguration)
+  - [x] RDS (describeDBInstances, describeDBClusters)
+  - [x] DynamoDB (listTables, describeTables)
+  - [x] Amplify (listApps, listBranches, listJobs)
+  - [x] CloudWatch (getMetricStatistics, filterLogEvents, alarms)
   - [ ] ElastiCache (describeCacheClusters)
-  - [ ] CloudWatch (getMetricStatistics, filterLogEvents)
   - [ ] IAM (simulatePrincipalPolicy, listRolePolicies)
 - [ ] Implement AWS mutation tool (`src/tools/aws/aws-mutate.ts`)
   - [ ] Approval flow integration
@@ -207,7 +209,7 @@ Scratchpad: Full Audit Trail
   - [ ] `runbook knowledge add <file>` - Add local knowledge
   - [ ] `runbook knowledge validate` - Check for stale content
 - [x] Implement config commands
-  - [ ] `runbook config init` - Initialize configuration
+  - [x] `runbook init` - Interactive setup wizard with step-by-step configuration
   - [ ] `runbook config set <key> <value>` - Set config values
 
 ### Phase 11: Learning & Suggestions
@@ -460,17 +462,44 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 1: Project Foundation (100%)
 - Phase 2: Core Agent Loop (100%)
 - Phase 3: Hypothesis Engine (90% - missing causal query builder)
+- Phase 4: AWS Tools (90% - EC2, ECS, Lambda, RDS, DynamoDB, Amplify, CloudWatch)
 - Phase 5: Safety Layer (50% - missing approval flow UI)
-- Phase 8: Knowledge Types (20% - types defined, implementation pending)
+- Phase 6: Observability (60% - CloudWatch alarms/logs implemented)
+- Phase 7: Incident Management (60% - PagerDuty integration implemented)
+- Phase 8: Knowledge System (80% - filesystem source, SQLite store, FTS search)
 - Phase 9: Skills (10% - investigate-incident skill created)
-- Phase 10: CLI Interface (60% - core commands working)
+- Phase 10: CLI Interface (80% - ask, investigate, status, init, config, knowledge commands)
+
+**New Features:**
+- Multi-AWS account support with assume-role and profiles
+- Service configuration system for targeted infrastructure scanning
+- Quick setup templates (ecs-rds, serverless, enterprise)
+- Interactive setup wizard (`runbook init`) with step-by-step configuration
+- DynamoDB support (listTables, describeTables, health checks)
+- Amplify support (listApps, listBranches, deployment status)
+- Service-aware aws_query tool (only queries enabled services)
+
+**GitHub:** https://github.com/manthan787/RunbookAI
 
 **Next Steps:**
 
-1. Install dependencies and verify project builds
-2. Implement AWS tools (Phase 4) - priority for `runbook ask` to work
-3. Complete knowledge system (Phase 8) - filesystem source + vector store
-4. Add approval flow UI in CLI
-5. Test end-to-end with `runbook ask "what's running in prod"`
+1. Add approval flow UI for mutations
+2. Implement EKS support
+3. Add Datadog integration
+4. Complete skill system for deploy/scale workflows
+5. Implement causal query builder for hypothesis-targeted queries
 
-**First Milestone:** `runbook ask "what's running in prod"` returns real AWS data.
+**Usage:**
+```bash
+# Quick setup
+runbook init --template ecs-rds --regions us-east-1
+
+# Query infrastructure
+runbook ask "what's running in prod?"
+
+# Investigate incident
+runbook investigate PD-12345
+
+# Search knowledge
+runbook knowledge search "redis timeout"
+```
