@@ -16,6 +16,14 @@ import { getActiveAlarms, filterLogEvents, listLogGroups } from './aws/cloudwatc
 import { getIncident, getIncidentAlerts, listIncidents, addIncidentNote } from './incident/pagerduty';
 import { createRetriever } from '../knowledge/retriever';
 import { getEnabledServices } from '../providers/aws/client';
+import {
+  classifyRisk,
+  requestApproval,
+  generateMutationId,
+  checkCooldown,
+  recordCriticalMutation,
+  type MutationRequest,
+} from '../agent/approval';
 
 export interface ToolCategory {
   name: string;
@@ -296,9 +304,9 @@ export const awsMutateTool = defineTool(
   `Execute state-changing AWS operations. Requires explicit approval.
 
    Use for:
-   - Scaling services
+   - Scaling services (ecs:UpdateService, lambda:UpdateFunctionConfiguration)
    - Updating deployments
-   - Restarting instances
+   - Restarting instances (ec2:RebootInstances)
    - Modifying configurations
 
    Always provide rollback instructions.`,
@@ -307,7 +315,11 @@ export const awsMutateTool = defineTool(
     properties: {
       operation: {
         type: 'string',
-        description: 'The AWS operation to perform (e.g., ecs:UpdateService)',
+        description: 'The AWS operation to perform (e.g., ecs:UpdateService, ec2:RebootInstances)',
+      },
+      resource: {
+        type: 'string',
+        description: 'The resource identifier being modified (e.g., service name, instance ID)',
       },
       parameters: {
         type: 'object',
@@ -319,16 +331,192 @@ export const awsMutateTool = defineTool(
       },
       rollbackCommand: {
         type: 'string',
-        description: 'Command to rollback this change',
+        description: 'Command or instructions to rollback this change',
+      },
+      estimatedImpact: {
+        type: 'string',
+        description: 'Estimated impact of this operation (e.g., "5 min downtime")',
       },
     },
-    required: ['operation', 'parameters', 'description'],
+    required: ['operation', 'resource', 'parameters', 'description'],
   },
   async (args) => {
-    // Placeholder - will be implemented with approval flow
-    return { message: 'AWS mutate tool not yet implemented', args };
+    const operation = args.operation as string;
+    const resource = args.resource as string;
+    const parameters = args.parameters as Record<string, unknown>;
+    const description = args.description as string;
+    const rollbackCommand = args.rollbackCommand as string | undefined;
+    const estimatedImpact = args.estimatedImpact as string | undefined;
+
+    // Classify risk level
+    const riskLevel = classifyRisk(operation, resource);
+
+    // Check cooldown for critical operations
+    if (riskLevel === 'critical') {
+      const cooldown = checkCooldown(operation, 60000);
+      if (!cooldown.allowed) {
+        const remainingSecs = Math.ceil(cooldown.remainingMs / 1000);
+        return {
+          status: 'blocked',
+          reason: `Cooldown active. Please wait ${remainingSecs} seconds before another critical operation.`,
+          riskLevel,
+        };
+      }
+    }
+
+    // Create mutation request
+    const request: MutationRequest = {
+      id: generateMutationId(),
+      operation,
+      resource,
+      description,
+      riskLevel,
+      parameters,
+      rollbackCommand,
+      estimatedImpact,
+    };
+
+    // Request approval
+    const approval = await requestApproval(request);
+
+    if (!approval.approved) {
+      return {
+        status: 'rejected',
+        reason: 'Operation rejected by user',
+        mutationId: request.id,
+        riskLevel,
+      };
+    }
+
+    // Record critical mutation for cooldown
+    if (riskLevel === 'critical') {
+      recordCriticalMutation();
+    }
+
+    // Execute the operation
+    try {
+      const result = await executeAwsMutation(operation, resource, parameters);
+      return {
+        status: 'success',
+        mutationId: request.id,
+        operation,
+        resource,
+        result,
+        approvedAt: approval.approvedAt?.toISOString(),
+        rollbackCommand,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        mutationId: request.id,
+        operation,
+        resource,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        rollbackCommand,
+      };
+    }
   }
 );
+
+/**
+ * Execute an AWS mutation operation
+ */
+async function executeAwsMutation(
+  operation: string,
+  resource: string,
+  parameters: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const [service, action] = operation.split(':');
+
+  switch (service.toLowerCase()) {
+    case 'ecs': {
+      const { ECSClient, UpdateServiceCommand } = await import('@aws-sdk/client-ecs');
+      const client = new ECSClient({ region: (parameters.region as string) || 'us-east-1' });
+
+      if (action === 'UpdateService') {
+        const command = new UpdateServiceCommand({
+          cluster: parameters.cluster as string,
+          service: resource,
+          desiredCount: parameters.desiredCount as number | undefined,
+          forceNewDeployment: parameters.forceNewDeployment as boolean | undefined,
+        });
+        const response = await client.send(command);
+        return {
+          serviceName: response.service?.serviceName,
+          desiredCount: response.service?.desiredCount,
+          runningCount: response.service?.runningCount,
+          status: response.service?.status,
+        };
+      }
+      break;
+    }
+
+    case 'ec2': {
+      const { EC2Client, RebootInstancesCommand, StopInstancesCommand, StartInstancesCommand } = await import('@aws-sdk/client-ec2');
+      const client = new EC2Client({ region: (parameters.region as string) || 'us-east-1' });
+
+      if (action === 'RebootInstances') {
+        const command = new RebootInstancesCommand({
+          InstanceIds: [resource],
+        });
+        await client.send(command);
+        return { instanceId: resource, action: 'rebooting' };
+      }
+
+      if (action === 'StopInstances') {
+        const command = new StopInstancesCommand({
+          InstanceIds: [resource],
+        });
+        const response = await client.send(command);
+        return {
+          instanceId: resource,
+          previousState: response.StoppingInstances?.[0]?.PreviousState?.Name,
+          currentState: response.StoppingInstances?.[0]?.CurrentState?.Name,
+        };
+      }
+
+      if (action === 'StartInstances') {
+        const command = new StartInstancesCommand({
+          InstanceIds: [resource],
+        });
+        const response = await client.send(command);
+        return {
+          instanceId: resource,
+          previousState: response.StartingInstances?.[0]?.PreviousState?.Name,
+          currentState: response.StartingInstances?.[0]?.CurrentState?.Name,
+        };
+      }
+      break;
+    }
+
+    case 'lambda': {
+      const { LambdaClient, UpdateFunctionConfigurationCommand } = await import('@aws-sdk/client-lambda');
+      const client = new LambdaClient({ region: (parameters.region as string) || 'us-east-1' });
+
+      if (action === 'UpdateFunctionConfiguration') {
+        const command = new UpdateFunctionConfigurationCommand({
+          FunctionName: resource,
+          MemorySize: parameters.memorySize as number | undefined,
+          Timeout: parameters.timeout as number | undefined,
+          Environment: parameters.environment as { Variables?: Record<string, string> } | undefined,
+        });
+        const response = await client.send(command);
+        return {
+          functionName: response.FunctionName,
+          memorySize: response.MemorySize,
+          timeout: response.Timeout,
+          lastModified: response.LastModified,
+        };
+      }
+      break;
+    }
+
+    default:
+      throw new Error(`Unsupported operation: ${operation}. Supported: ecs:UpdateService, ec2:RebootInstances, ec2:StopInstances, ec2:StartInstances, lambda:UpdateFunctionConfiguration`);
+  }
+
+  throw new Error(`Unknown action ${action} for service ${service}`);
+}
 
 // Global retriever instance
 let retriever: ReturnType<typeof createRetriever> | null = null;

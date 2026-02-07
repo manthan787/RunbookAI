@@ -101,20 +101,23 @@ Scratchpad: Full Audit Trail
   - [x] CloudWatch (getMetricStatistics, filterLogEvents, alarms)
   - [ ] ElastiCache (describeCacheClusters)
   - [ ] IAM (simulatePrincipalPolicy, listRolePolicies)
-- [ ] Implement AWS mutation tool (`src/tools/aws/aws-mutate.ts`)
-  - [ ] Approval flow integration
-  - [ ] Rollback command generation
-  - [ ] Risk classification
+- [x] Implement AWS mutation tool (`src/tools/registry.ts - aws_mutate`)
+  - [x] Approval flow integration
+  - [x] Rollback command display
+  - [x] Risk classification
+  - [x] Supported: ECS UpdateService, EC2 Reboot/Start/Stop, Lambda UpdateConfig
 
 ### Phase 5: Safety & Approval System
 - [x] Implement safety layer (`src/agent/safety.ts`)
   - [x] Operation risk classification (read/low/high/critical)
   - [x] Mutation limits per session
   - [x] Cooldown between high-risk operations
-- [ ] Implement approval flow
-  - [ ] CLI confirmation prompts
+- [x] Implement approval flow (`src/agent/approval.ts`)
+  - [x] CLI confirmation prompts with risk display
+  - [x] Risk-based approval (critical ops require typing 'yes')
+  - [x] Cooldown enforcement for critical mutations
+  - [x] Audit logging to `.runbook/audit/approvals.jsonl`
   - [ ] Slack approval integration (future)
-  - [ ] Audit logging for all approvals
 
 ### Phase 6: Observability Tools
 - [ ] Implement CloudWatch tools (`src/tools/observability/cloudwatch.ts`)
@@ -462,13 +465,13 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 1: Project Foundation (100%)
 - Phase 2: Core Agent Loop (100%)
 - Phase 3: Hypothesis Engine (90% - missing causal query builder)
-- Phase 4: AWS Tools (90% - EC2, ECS, Lambda, RDS, DynamoDB, Amplify, CloudWatch)
-- Phase 5: Safety Layer (50% - missing approval flow UI)
+- Phase 4: AWS Tools (95% - EC2, ECS, Lambda, RDS, DynamoDB, Amplify, CloudWatch + mutations)
+- Phase 5: Safety Layer (90% - approval flow complete, missing Slack integration)
 - Phase 6: Observability (60% - CloudWatch alarms/logs implemented)
 - Phase 7: Incident Management (60% - PagerDuty integration implemented)
 - Phase 8: Knowledge System (80% - filesystem source, SQLite store, FTS search)
 - Phase 9: Skills (10% - investigate-incident skill created)
-- Phase 10: CLI Interface (80% - ask, investigate, status, init, config, knowledge commands)
+- Phase 10: CLI Interface (85% - ask, investigate, status, init wizard, config, knowledge commands)
 
 **New Features:**
 - Multi-AWS account support with assume-role and profiles
@@ -478,16 +481,19 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - DynamoDB support (listTables, describeTables, health checks)
 - Amplify support (listApps, listBranches, deployment status)
 - Service-aware aws_query tool (only queries enabled services)
+- Mutation approval flow with risk classification (low/medium/high/critical)
+- AWS mutations: ECS scaling, EC2 start/stop/reboot, Lambda config updates
+- Audit trail for all approved/rejected mutations
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 
 **Next Steps:**
 
-1. Add approval flow UI for mutations
-2. Implement EKS support
-3. Add Datadog integration
-4. Complete skill system for deploy/scale workflows
-5. Implement causal query builder for hypothesis-targeted queries
+1. Implement EKS support
+2. Add Datadog integration
+3. Complete skill system for deploy/scale workflows
+4. Implement causal query builder for hypothesis-targeted queries
+5. Add Slack approval integration for mutations
 
 **Usage:**
 ```bash
