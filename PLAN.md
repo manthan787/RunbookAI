@@ -1,0 +1,476 @@
+# Runbook: Agentic Cloud Operator & Incident Investigator
+
+An AI-powered SRE assistant that investigates incidents, executes runbooks, and manages cloud infrastructure using a research-first, hypothesis-driven methodology.
+
+---
+
+## Core Methodology
+
+| Source | Contribution |
+|--------|--------------|
+| **Dexter** | Research-first architecture, scratchpad audit trail, skills, graceful limits |
+| **Bits AI (Datadog)** | Hypothesis branching, causal focus, evidence-based pruning |
+| **Organizational Knowledge** | Runbooks, post-mortems, architecture docs, service ownership |
+
+### Investigation Flow
+
+```
+Incident Alert (PagerDuty/OpsGenie)
+    ↓
+Initial Context Gathering
+    ├─ Alert metadata
+    ├─ Recent deployments
+    ├─ Service dependencies
+    └─ Retrieved organizational knowledge
+    ↓
+Hypothesis Formation (3-5 initial hypotheses)
+    ↓
+Parallel Hypothesis Testing (targeted queries only)
+    ↓
+Branch (strong evidence) / Prune (no evidence)
+    ↓
+Recursive Investigation (max depth: 4)
+    ↓
+Root Cause Identification + Confidence Score
+    ↓
+Remediation (with approval for mutations)
+    ↓
+Scratchpad: Full Audit Trail
+```
+
+---
+
+## Implementation Plan
+
+### Phase 1: Project Foundation
+- [x] Initialize project structure
+- [x] Create PLAN.md
+- [x] Set up TypeScript + Bun configuration
+- [x] Set up ESLint + Prettier
+- [x] Create base directory structure
+- [x] Add core dependencies (Anthropic SDK, AWS SDK, etc.)
+
+### Phase 2: Core Agent Loop
+- [x] Implement base Agent class (`src/agent/agent.ts`)
+  - [x] Async generator pattern for event streaming
+  - [x] Iteration loop with max iterations
+  - [x] Tool execution pipeline
+- [x] Implement Scratchpad (`src/agent/scratchpad.ts`)
+  - [x] JSONL persistence
+  - [x] Tool call tracking
+  - [x] Graceful limits (warn, don't block)
+  - [x] Similar query detection
+- [x] Implement prompt builder (`src/agent/prompts.ts`)
+  - [x] System prompt with tool descriptions
+  - [x] Iteration prompt with accumulated results
+  - [x] Final answer prompt
+- [x] Implement event types (`src/agent/types.ts`)
+  - [x] ThinkingEvent, ToolStartEvent, ToolEndEvent, etc.
+  - [x] Investigation-specific events
+
+### Phase 3: Hypothesis Engine
+- [x] Implement Hypothesis tree (`src/agent/hypothesis.ts`)
+  - [x] Hypothesis interface (id, statement, evidence, children)
+  - [x] InvestigationTree class
+  - [x] Branch and prune operations
+  - [x] Tree serialization for scratchpad
+- [x] Implement confidence scoring (`src/agent/confidence.ts`)
+  - [x] Evidence strength classification (strong/weak/none)
+  - [x] Multi-factor confidence calculation
+  - [x] Temporal correlation detection
+- [ ] Implement causal query builder (`src/tools/observability/causal-query.ts`)
+  - [ ] Hypothesis-targeted query generation
+  - [ ] Anti-pattern detection (prevent broad data gathering)
+
+### Phase 4: Cloud Provider Tools (AWS First)
+- [ ] Implement AWS client wrapper (`src/providers/aws/client.ts`)
+  - [ ] Credential management
+  - [ ] Region handling
+  - [ ] Error wrapping
+- [ ] Implement AWS query meta-router (`src/tools/aws/aws-query.ts`)
+  - [ ] Natural language to AWS API routing
+  - [ ] Parallel sub-tool execution
+  - [ ] Result aggregation
+- [ ] Implement AWS sub-tools (`src/tools/aws/`)
+  - [ ] EC2 (describeInstances, etc.)
+  - [ ] ECS (describeTasks, describeServices, updateService)
+  - [ ] Lambda (listFunctions, getFunctionConfiguration)
+  - [ ] RDS (describeDBInstances, describeDBClusters)
+  - [ ] ElastiCache (describeCacheClusters)
+  - [ ] CloudWatch (getMetricStatistics, filterLogEvents)
+  - [ ] IAM (simulatePrincipalPolicy, listRolePolicies)
+- [ ] Implement AWS mutation tool (`src/tools/aws/aws-mutate.ts`)
+  - [ ] Approval flow integration
+  - [ ] Rollback command generation
+  - [ ] Risk classification
+
+### Phase 5: Safety & Approval System
+- [x] Implement safety layer (`src/agent/safety.ts`)
+  - [x] Operation risk classification (read/low/high/critical)
+  - [x] Mutation limits per session
+  - [x] Cooldown between high-risk operations
+- [ ] Implement approval flow
+  - [ ] CLI confirmation prompts
+  - [ ] Slack approval integration (future)
+  - [ ] Audit logging for all approvals
+
+### Phase 6: Observability Tools
+- [ ] Implement CloudWatch tools (`src/tools/observability/cloudwatch.ts`)
+  - [ ] Log insights queries
+  - [ ] Metric statistics
+  - [ ] Alarm status
+- [ ] Implement Datadog tools (`src/tools/observability/datadog.ts`) (optional)
+  - [ ] Metric queries
+  - [ ] Log search
+  - [ ] APM traces
+- [ ] Implement generic metrics interface
+  - [ ] Prometheus support (future)
+  - [ ] Custom metrics endpoints
+
+### Phase 7: Incident Management Integration
+- [ ] Implement PagerDuty tools (`src/tools/incident/pagerduty.ts`)
+  - [ ] Get incident details
+  - [ ] List alerts for incident
+  - [ ] Get service configuration
+  - [ ] Add investigation notes
+  - [ ] Resolve incident (with approval)
+- [ ] Implement OpsGenie tools (`src/tools/incident/opsgenie.ts`)
+  - [ ] Similar to PagerDuty
+- [ ] Implement Slack integration (`src/tools/incident/slack.ts`)
+  - [ ] Post investigation updates
+  - [ ] Read thread context
+  - [ ] Create incident summary canvas
+
+### Phase 8: Knowledge System
+- [x] Implement knowledge types (`src/knowledge/types.ts`)
+  - [x] KnowledgeDocument, KnowledgeChunk interfaces
+  - [x] Source configurations
+- [ ] Implement filesystem source (`src/knowledge/sources/filesystem.ts`)
+  - [ ] Markdown parsing with frontmatter
+  - [ ] YAML support
+  - [ ] File watching for hot reload
+- [ ] Implement chunker (`src/knowledge/indexer/chunker.ts`)
+  - [ ] Markdown-aware chunking
+  - [ ] Section preservation
+  - [ ] Metadata extraction
+- [ ] Implement embedder (`src/knowledge/indexer/embedder.ts`)
+  - [ ] OpenAI embeddings integration
+  - [ ] Batch processing
+- [ ] Implement vector store (`src/knowledge/store/vector-store.ts`)
+  - [ ] SQLite + sqlite-vss for local storage
+  - [ ] CRUD operations
+  - [ ] Similarity search
+- [ ] Implement service graph (`src/knowledge/store/graph-store.ts`)
+  - [ ] Service nodes and edges
+  - [ ] Dependency traversal
+  - [ ] Ownership lookup
+- [ ] Implement hybrid retriever (`src/knowledge/retriever/hybrid-search.ts`)
+  - [ ] Vector + keyword search
+  - [ ] Service filtering
+  - [ ] Type boosting
+- [ ] Implement reranker (`src/knowledge/retriever/reranker.ts`)
+  - [ ] LLM-based relevance scoring
+  - [ ] Hypothesis-aware ranking
+- [ ] Implement context builder (`src/knowledge/retriever/context-builder.ts`)
+  - [ ] Assemble retrieved knowledge for prompts
+  - [ ] Token budget management
+
+### Phase 9: Skills System
+- [ ] Implement skill registry (`src/skills/registry.ts`)
+  - [ ] Skill discovery from multiple directories
+  - [ ] Skill loading and parsing
+- [ ] Implement skill tool (`src/tools/skill.ts`)
+  - [ ] Skill invocation
+  - [ ] Argument passing
+  - [ ] Deduplication
+- [ ] Create core skills
+  - [x] `investigate-incident` - Full hypothesis-driven investigation
+  - [ ] `deploy-service` - Safe deployment workflow
+  - [ ] `scale-service` - Capacity planning and scaling
+  - [ ] `troubleshoot-service` - General troubleshooting
+  - [ ] `cost-analysis` - Spending analysis and optimization
+  - [ ] `security-audit` - IAM and security review
+
+### Phase 10: CLI Interface
+- [x] Implement CLI entry point (`src/cli.tsx`)
+  - [x] Ink-based React CLI
+  - [x] Command parsing
+  - [x] Configuration loading
+- [x] Implement core commands
+  - [x] `runbook investigate <incident-id>` - Investigate incident
+  - [x] `runbook ask <query>` - Natural language cloud queries
+  - [ ] `runbook deploy <service>` - Deploy workflow
+  - [x] `runbook status` - Current infrastructure status
+- [ ] Implement knowledge commands
+  - [ ] `runbook knowledge sync` - Sync from sources
+  - [ ] `runbook knowledge search <query>` - Search knowledge base
+  - [ ] `runbook knowledge add <file>` - Add local knowledge
+  - [ ] `runbook knowledge validate` - Check for stale content
+- [x] Implement config commands
+  - [ ] `runbook config init` - Initialize configuration
+  - [ ] `runbook config set <key> <value>` - Set config values
+
+### Phase 11: Learning & Suggestions
+- [ ] Implement learning module (`src/knowledge/learning/`)
+  - [ ] Post-investigation analysis
+  - [ ] Runbook suggestion generation
+  - [ ] Known issue detection (recurring patterns)
+- [ ] Implement knowledge update suggestions
+  - [ ] New runbook drafts
+  - [ ] Runbook update patches
+  - [ ] Post-mortem drafts
+
+### Phase 12: Multi-Cloud Expansion (Future)
+- [ ] GCP provider (`src/providers/gcp/`)
+- [ ] Azure provider (`src/providers/azure/`)
+- [ ] Kubernetes provider (`src/providers/kubernetes/`)
+- [ ] Terraform integration (`src/providers/terraform/`)
+
+---
+
+## Project Structure
+
+```
+runbook/
+├── src/
+│   ├── agent/
+│   │   ├── agent.ts              # Main agent loop
+│   │   ├── hypothesis.ts         # Hypothesis tree management
+│   │   ├── confidence.ts         # Evidence scoring
+│   │   ├── prompts.ts            # Prompt templates
+│   │   ├── scratchpad.ts         # Audit trail
+│   │   ├── safety.ts             # Mutation controls
+│   │   └── types.ts              # Event types
+│   ├── providers/
+│   │   ├── aws/
+│   │   │   ├── client.ts         # AWS SDK wrapper
+│   │   │   └── tools/            # EC2, ECS, Lambda, etc.
+│   │   ├── gcp/                  # Future
+│   │   └── kubernetes/           # Future
+│   ├── tools/
+│   │   ├── registry.ts           # Tool registration
+│   │   ├── skill.ts              # Skill invocation
+│   │   ├── aws/
+│   │   │   ├── aws-query.ts      # Read-only meta-router
+│   │   │   └── aws-mutate.ts     # State changes
+│   │   ├── observability/
+│   │   │   ├── causal-query.ts   # Hypothesis-targeted queries
+│   │   │   ├── cloudwatch.ts
+│   │   │   └── datadog.ts
+│   │   └── incident/
+│   │       ├── pagerduty.ts
+│   │       ├── opsgenie.ts
+│   │       └── slack.ts
+│   ├── knowledge/
+│   │   ├── types.ts
+│   │   ├── sources/
+│   │   │   ├── filesystem.ts
+│   │   │   ├── confluence.ts     # Future
+│   │   │   └── github.ts         # Future
+│   │   ├── indexer/
+│   │   │   ├── chunker.ts
+│   │   │   ├── embedder.ts
+│   │   │   └── metadata.ts
+│   │   ├── store/
+│   │   │   ├── vector-store.ts
+│   │   │   ├── graph-store.ts
+│   │   │   └── sqlite.ts
+│   │   ├── retriever/
+│   │   │   ├── hybrid-search.ts
+│   │   │   ├── reranker.ts
+│   │   │   └── context-builder.ts
+│   │   └── learning/
+│   │       ├── suggest-updates.ts
+│   │       └── auto-enrich.ts
+│   ├── skills/
+│   │   ├── registry.ts
+│   │   ├── investigate-incident/
+│   │   │   └── SKILL.md
+│   │   ├── deploy-service/
+│   │   │   └── SKILL.md
+│   │   ├── scale-service/
+│   │   │   └── SKILL.md
+│   │   ├── troubleshoot-service/
+│   │   │   └── SKILL.md
+│   │   └── cost-analysis/
+│   │       └── SKILL.md
+│   ├── model/
+│   │   └── llm.ts                # LLM client with caching
+│   ├── hooks/
+│   │   └── useAgentRunner.ts     # React hook for CLI
+│   ├── utils/
+│   │   ├── tokens.ts             # Token counting
+│   │   └── config.ts             # Configuration loading
+│   └── cli.tsx                   # CLI entry point
+├── .runbook/                     # User configuration (gitignored)
+│   ├── config.yaml
+│   ├── runbooks/                 # Local runbooks
+│   ├── knowledge.db              # SQLite + vectors
+│   ├── service-graph.json
+│   ├── scratchpad/               # Investigation logs
+│   └── investigations/           # Investigation trees
+├── examples/
+│   └── runbooks/                 # Example runbooks
+├── package.json
+├── tsconfig.json
+├── bunfig.toml
+├── PLAN.md                       # This file
+└── README.md
+```
+
+---
+
+## Configuration Schema
+
+**`.runbook/config.yaml`**
+
+```yaml
+# LLM Configuration
+llm:
+  provider: anthropic  # anthropic | openai
+  model: claude-sonnet-4-20250514
+  api_key: ${ANTHROPIC_API_KEY}
+
+# Cloud Providers
+providers:
+  aws:
+    enabled: true
+    regions: [us-east-1, us-west-2]
+    profile: default  # AWS profile or use env vars
+
+# Incident Management
+incident:
+  pagerduty:
+    enabled: true
+    api_key: ${PAGERDUTY_API_KEY}
+  opsgenie:
+    enabled: false
+  slack:
+    enabled: true
+    bot_token: ${SLACK_BOT_TOKEN}
+
+# Knowledge Sources
+knowledge:
+  sources:
+    - type: filesystem
+      path: .runbook/runbooks/
+      watch: true
+    - type: filesystem
+      path: ~/.runbook/knowledge/
+
+  store:
+    type: local
+    path: .runbook/knowledge.db
+    embedding_model: text-embedding-3-small
+
+  retrieval:
+    top_k: 10
+    rerank: true
+
+# Safety
+safety:
+  require_approval:
+    - high_risk
+    - critical
+  max_mutations_per_session: 5
+  cooldown_between_critical_ms: 60000
+
+# Agent
+agent:
+  max_iterations: 10
+  max_hypothesis_depth: 4
+  context_threshold_tokens: 100000
+```
+
+---
+
+## Key Design Decisions
+
+### 1. Hypothesis-Driven Investigation
+Rather than gathering all available data, we form hypotheses and test them with targeted queries. This reduces noise and focuses on causal relationships.
+
+### 2. Graceful Limits
+Tool limits warn but never block. The agent can always proceed, but gets warnings to prevent retry loops.
+
+### 3. Research-First for Mutations
+All state-changing operations require prior research to understand current state and impact.
+
+### 4. Full Audit Trail
+Every tool call, hypothesis, and decision is logged to JSONL for compliance and debugging.
+
+### 5. Knowledge as First-Class Citizen
+Organizational runbooks and post-mortems are indexed and retrieved during investigations, not just appended as context.
+
+### 6. Multi-Cloud Ready
+Provider abstraction allows adding GCP, Azure, K8s without changing core agent logic.
+
+---
+
+## Dependencies
+
+### Core
+- `bun` - Runtime
+- `typescript` - Type safety
+- `@langchain/anthropic` - LLM integration
+- `@langchain/core` - Agent primitives
+- `zod` - Schema validation
+
+### AWS
+- `@aws-sdk/client-ec2`
+- `@aws-sdk/client-ecs`
+- `@aws-sdk/client-lambda`
+- `@aws-sdk/client-rds`
+- `@aws-sdk/client-elasticache`
+- `@aws-sdk/client-cloudwatch`
+- `@aws-sdk/client-cloudwatch-logs`
+- `@aws-sdk/client-iam`
+
+### Incident Management
+- `node-pagerduty` or raw API
+- `@slack/web-api`
+
+### Knowledge
+- `better-sqlite3` - Local storage
+- `sqlite-vss` - Vector search
+- `openai` - Embeddings
+- `gray-matter` - Frontmatter parsing
+- `marked` - Markdown parsing
+
+### CLI
+- `ink` - React for CLI
+- `ink-spinner` - Loading states
+- `commander` - Command parsing
+- `chalk` - Colors
+
+---
+
+## Success Metrics
+
+1. **Investigation Accuracy**: Root cause correctly identified in >80% of incidents
+2. **Time to Resolution**: Reduce MTTR by providing faster diagnosis
+3. **Runbook Coverage**: Track which incidents had matching runbooks
+4. **Knowledge Freshness**: Alert on stale runbooks (>90 days without validation)
+5. **Safety**: Zero unauthorized mutations, full audit trail
+
+---
+
+## Progress Summary
+
+**Completed:**
+- Phase 1: Project Foundation (100%)
+- Phase 2: Core Agent Loop (100%)
+- Phase 3: Hypothesis Engine (90% - missing causal query builder)
+- Phase 5: Safety Layer (50% - missing approval flow UI)
+- Phase 8: Knowledge Types (20% - types defined, implementation pending)
+- Phase 9: Skills (10% - investigate-incident skill created)
+- Phase 10: CLI Interface (60% - core commands working)
+
+**Next Steps:**
+
+1. Install dependencies and verify project builds
+2. Implement AWS tools (Phase 4) - priority for `runbook ask` to work
+3. Complete knowledge system (Phase 8) - filesystem source + vector store
+4. Add approval flow UI in CLI
+5. Test end-to-end with `runbook ask "what's running in prod"`
+
+**First Milestone:** `runbook ask "what's running in prod"` returns real AWS data.
