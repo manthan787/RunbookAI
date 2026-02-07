@@ -9,6 +9,9 @@ import { getModel, complete, type Context, type Tool as PiTool, Type, type TSche
 import type { Tool } from '../agent/types';
 import type { LLMClient, LLMResponse, ToolCall } from '../agent/agent';
 
+// Re-export types for external use
+export type { LLMClient, LLMResponse, ToolCall };
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyModel = any;
 

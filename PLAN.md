@@ -192,18 +192,25 @@ Scratchpad: Full Audit Trail
   - [ ] Token budget management
 
 ### Phase 9: Skills System
-- [ ] Implement skill registry (`src/skills/registry.ts`)
-  - [ ] Skill discovery from multiple directories
-  - [ ] Skill loading and parsing
-- [ ] Implement skill tool (`src/tools/skill.ts`)
-  - [ ] Skill invocation
-  - [ ] Argument passing
-  - [ ] Deduplication
-- [ ] Create core skills
-  - [x] `investigate-incident` - Full hypothesis-driven investigation
-  - [ ] `deploy-service` - Safe deployment workflow
-  - [ ] `scale-service` - Capacity planning and scaling
-  - [ ] `troubleshoot-service` - General troubleshooting
+- [x] Implement skill types (`src/skills/types.ts`)
+  - [x] SkillDefinition, SkillStep, SkillParameter interfaces
+  - [x] Execution context and result types
+- [x] Implement skill registry (`src/skills/registry.ts`)
+  - [x] Built-in skill registration
+  - [x] User skill loading from .runbook/skills/
+  - [x] Skill lookup by ID, tag, or service
+- [x] Implement skill executor (`src/skills/executor.ts`)
+  - [x] Step-by-step execution
+  - [x] Parameter substitution with templates
+  - [x] Conditional step execution
+  - [x] Error handling (continue/abort/retry)
+  - [x] Approval flow integration
+- [x] Create core skills (`src/skills/builtin/`)
+  - [x] `investigate-incident` - Hypothesis-driven investigation
+  - [x] `deploy-service` - Safe deployment with pre/post checks
+  - [x] `scale-service` - Capacity planning and scaling
+  - [x] `troubleshoot-service` - Diagnose and fix issues
+  - [x] `rollback-deployment` - Quick and safe rollback
   - [ ] `cost-analysis` - Spending analysis and optimization
   - [ ] `security-audit` - IAM and security review
 
@@ -482,7 +489,7 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Phase 6: Observability (90% - CloudWatch + Datadog integration)
 - Phase 7: Incident Management (60% - PagerDuty integration implemented)
 - Phase 8: Knowledge System (80% - filesystem source, SQLite store, FTS search)
-- Phase 9: Skills (10% - investigate-incident skill created)
+- Phase 9: Skills (80% - 5 core skills with executor and registry)
 - Phase 10: CLI Interface (90% - ask, chat, investigate, status, init wizard, config, knowledge commands)
 
 **New Features:**
@@ -501,6 +508,11 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Audit trail for all approved/rejected mutations
 - Interactive chat interface (`runbook chat`) with conversation history
 - Datadog integration (metrics, logs, traces, monitors, events)
+- Skill system with 5 built-in workflows:
+  - investigate-incident, deploy-service, scale-service
+  - troubleshoot-service, rollback-deployment
+- Skill executor with templating, conditions, and error handling
+- User-defined skills via YAML in .runbook/skills/
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 

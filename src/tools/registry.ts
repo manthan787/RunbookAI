@@ -766,28 +766,93 @@ export const skillTool = defineTool(
   'skill',
   `Invoke a specialized skill/workflow.
 
-   Skills provide step-by-step procedures for complex tasks like:
-   - investigate-incident: Full hypothesis-driven investigation
-   - deploy-service: Safe deployment workflow
-   - scale-service: Capacity planning and scaling
-   - troubleshoot-service: General troubleshooting`,
+   Available skills:
+   - investigate-incident: Hypothesis-driven incident investigation
+   - deploy-service: Safe deployment with pre/post checks
+   - scale-service: Scale ECS/Lambda/EKS with safety checks
+   - troubleshoot-service: Diagnose and fix service issues
+   - rollback-deployment: Quick and safe rollback
+
+   Use 'list' as the skill name to see all available skills.`,
   {
     type: 'object',
     properties: {
       name: {
         type: 'string',
-        description: 'Name of the skill to invoke',
+        description: 'Name of the skill to invoke (or "list" to see available skills)',
       },
       args: {
         type: 'object',
-        description: 'Arguments for the skill',
+        description: 'Arguments for the skill (varies by skill)',
       },
     },
     required: ['name'],
   },
   async (args) => {
-    // Placeholder - will be implemented with skill system
-    return { message: 'Skill system not yet implemented', args };
+    const { skillRegistry } = await import('../skills/registry');
+    const skillName = args.name as string;
+    const skillArgs = (args.args as Record<string, unknown>) || {};
+
+    // List skills
+    if (skillName === 'list') {
+      const summaries = skillRegistry.getSummaries();
+      return {
+        availableSkills: summaries,
+        count: summaries.length,
+        hint: 'Use skill name with args to invoke a skill',
+      };
+    }
+
+    // Get skill
+    const skill = skillRegistry.get(skillName);
+    if (!skill) {
+      return {
+        error: `Unknown skill: ${skillName}`,
+        availableSkills: skillRegistry.getSummaries().map((s) => s.id),
+      };
+    }
+
+    // Validate required parameters
+    const missingParams = skill.parameters
+      .filter((p) => p.required && !(p.name in skillArgs))
+      .map((p) => p.name);
+
+    if (missingParams.length > 0) {
+      return {
+        error: `Missing required parameters: ${missingParams.join(', ')}`,
+        skill: {
+          id: skill.id,
+          name: skill.name,
+          description: skill.description,
+          parameters: skill.parameters.map((p) => ({
+            name: p.name,
+            description: p.description,
+            type: p.type,
+            required: p.required,
+            default: p.default,
+          })),
+        },
+      };
+    }
+
+    // Return skill info for agent to execute steps
+    return {
+      skill: {
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        riskLevel: skill.riskLevel,
+        steps: skill.steps.map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          action: s.action,
+          requiresApproval: s.requiresApproval,
+        })),
+      },
+      parameters: skillArgs,
+      message: `Skill "${skill.name}" loaded with ${skill.steps.length} steps. Execute each step in sequence.`,
+    };
   }
 );
 
