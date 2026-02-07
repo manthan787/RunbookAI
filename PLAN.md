@@ -98,6 +98,7 @@ Scratchpad: Full Audit Trail
   - [x] RDS (describeDBInstances, describeDBClusters)
   - [x] DynamoDB (listTables, describeTables)
   - [x] Amplify (listApps, listBranches, listJobs)
+  - [x] EKS (listClusters, describeCluster, nodeGroups, fargateProfiles)
   - [x] CloudWatch (getMetricStatistics, filterLogEvents, alarms)
   - [ ] ElastiCache (describeCacheClusters)
   - [ ] IAM (simulatePrincipalPolicy, listRolePolicies)
@@ -484,16 +485,17 @@ Provider abstraction allows adding GCP, Azure, K8s without changing core agent l
 - Mutation approval flow with risk classification (low/medium/high/critical)
 - AWS mutations: ECS scaling, EC2 start/stop/reboot, Lambda config updates
 - Audit trail for all approved/rejected mutations
+- EKS support (listClusters, nodeGroups, fargateProfiles, health checks)
 
 **GitHub:** https://github.com/manthan787/RunbookAI
 
 **Next Steps:**
 
-1. Implement EKS support
-2. Add Datadog integration
-3. Complete skill system for deploy/scale workflows
-4. Implement causal query builder for hypothesis-targeted queries
-5. Add Slack approval integration for mutations
+1. Add Datadog integration
+2. Complete skill system for deploy/scale workflows
+3. Implement causal query builder for hypothesis-targeted queries
+4. Add Slack approval integration for mutations
+5. Add ElastiCache and IAM tools
 
 **Usage:**
 ```bash

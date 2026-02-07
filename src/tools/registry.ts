@@ -12,6 +12,7 @@ import { listFunctions } from './aws/lambda';
 import { describeDBInstances, describeDBClusters } from './aws/rds';
 import { describeTables } from './aws/dynamodb';
 import { getAllAppsWithStatus } from './aws/amplify';
+import { getAllClustersWithStatus } from './aws/eks';
 import { getActiveAlarms, filterLogEvents, listLogGroups } from './aws/cloudwatch';
 import { getIncident, getIncidentAlerts, listIncidents, addIncidentNote } from './incident/pagerduty';
 import { createRetriever } from '../knowledge/retriever';
@@ -158,8 +159,8 @@ export const awsQueryTool = defineTool(
       },
       resource_type: {
         type: 'string',
-        description: 'Type of resource to query: ec2, ecs, lambda, rds, dynamodb, amplify, elasticache',
-        enum: ['ec2', 'ecs', 'lambda', 'rds', 'dynamodb', 'amplify', 'elasticache', 'all'],
+        description: 'Type of resource to query: ec2, ecs, eks, lambda, rds, dynamodb, amplify, elasticache',
+        enum: ['ec2', 'ecs', 'eks', 'lambda', 'rds', 'dynamodb', 'amplify', 'elasticache', 'all'],
       },
       region: {
         type: 'string',
@@ -276,6 +277,25 @@ export const awsQueryTool = defineTool(
             stage: b.stage,
             status: b.status,
           })),
+        }));
+      }
+
+      if ((resourceType === 'eks' || resourceType === 'all') && isEnabled('eks', allCompute)) {
+        const clusters = await getAllClustersWithStatus(accountName, region);
+        results.eks_clusters = clusters.map((cluster) => ({
+          name: cluster.name,
+          version: cluster.version,
+          status: cluster.status,
+          endpoint: cluster.endpoint,
+          platformVersion: cluster.platformVersion,
+          nodeGroups: cluster.nodeGroups.map((ng) => ({
+            name: ng.nodeGroupName,
+            status: ng.status,
+            instanceTypes: ng.instanceTypes,
+            scaling: ng.scalingConfig,
+            health: ng.health?.issues?.length ? 'unhealthy' : 'healthy',
+          })),
+          fargateProfiles: cluster.fargateProfiles,
         }));
       }
 

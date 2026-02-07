@@ -21,6 +21,7 @@
     "@aws-sdk/client-dynamodb": "^3.985.0",
     "@aws-sdk/client-ec2": "^3.600.0",
     "@aws-sdk/client-ecs": "^3.600.0",
+    "@aws-sdk/client-eks": "^3.985.0",
     "@aws-sdk/client-elasticache": "^3.600.0",
     "@aws-sdk/client-iam": "^3.600.0",
     "@aws-sdk/client-lambda": "^3.600.0",
