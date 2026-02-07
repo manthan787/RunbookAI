@@ -11,9 +11,24 @@ import { z } from 'zod';
 /**
  * Configuration schema
  */
+// Providers supported by @mariozechner/pi-ai
 const LLMConfigSchema = z.object({
-  provider: z.enum(['anthropic', 'openai']).default('anthropic'),
-  model: z.string().default('claude-sonnet-4-20250514'),
+  provider: z.enum([
+    'openai',
+    'anthropic',
+    'google',
+    'mistral',
+    'groq',
+    'xai',
+    'openrouter',
+    'bedrock',
+    'azure',
+    'vertex',
+    'cerebras',
+    'github',
+    'ollama',
+  ]).default('openai'),
+  model: z.string().default('gpt-4o'),
   apiKey: z.string().optional(),
 });
 
@@ -180,9 +195,27 @@ export function getConfigValue<T>(config: Config, path: string): T | undefined {
 export function validateConfig(config: Config): string[] {
   const errors: string[] = [];
 
-  // Check LLM API key
-  if (!config.llm.apiKey && !process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
-    errors.push('No LLM API key configured. Set llm.apiKey or ANTHROPIC_API_KEY environment variable.');
+  // Check LLM API key based on provider
+  const providerEnvKeys: Record<string, string> = {
+    openai: 'OPENAI_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    google: 'GOOGLE_API_KEY',
+    mistral: 'MISTRAL_API_KEY',
+    groq: 'GROQ_API_KEY',
+    xai: 'XAI_API_KEY',
+    openrouter: 'OPENROUTER_API_KEY',
+    azure: 'AZURE_OPENAI_API_KEY',
+    cerebras: 'CEREBRAS_API_KEY',
+    github: 'GITHUB_TOKEN',
+    // These use different auth mechanisms
+    bedrock: 'AWS_ACCESS_KEY_ID',
+    vertex: 'GOOGLE_APPLICATION_CREDENTIALS',
+    ollama: '', // No API key needed
+  };
+
+  const envKey = providerEnvKeys[config.llm.provider];
+  if (envKey && !config.llm.apiKey && !process.env[envKey]) {
+    errors.push(`No API key for ${config.llm.provider}. Set ${envKey} environment variable.`);
   }
 
   // Check AWS if enabled

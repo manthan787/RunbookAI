@@ -2,15 +2,34 @@
  * LLM Client
  *
  * Provides a unified interface for calling language models with tool support.
- * Supports Anthropic Claude with prompt caching.
+ * Uses @mariozechner/pi-ai for multi-provider support (20+ providers).
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { getModel, complete, type Context, type Tool as PiTool, Type, type TSchema } from '@mariozechner/pi-ai';
 import type { Tool } from '../agent/types';
 import type { LLMClient, LLMResponse, ToolCall } from '../agent/agent';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyModel = any;
+
+// Supported providers from pi-ai
+export type Provider =
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'mistral'
+  | 'groq'
+  | 'xai'
+  | 'openrouter'
+  | 'bedrock'
+  | 'azure'
+  | 'vertex'
+  | 'cerebras'
+  | 'github'
+  | 'ollama';
+
 export interface LLMConfig {
-  provider: 'anthropic' | 'openai';
+  provider: Provider;
   model: string;
   apiKey?: string;
   maxTokens?: number;
@@ -18,8 +37,8 @@ export interface LLMConfig {
 }
 
 const DEFAULT_CONFIG: LLMConfig = {
-  provider: 'anthropic',
-  model: 'claude-sonnet-4-20250514',
+  provider: 'openai',
+  model: 'gpt-4o',
   maxTokens: 4096,
   temperature: 0,
 };
@@ -29,26 +48,47 @@ const DEFAULT_CONFIG: LLMConfig = {
  */
 export function createLLMClient(config: Partial<LLMConfig> = {}): LLMClient {
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
-
-  if (fullConfig.provider === 'anthropic') {
-    return new AnthropicClient(fullConfig);
-  }
-
-  throw new Error(`Unsupported LLM provider: ${fullConfig.provider}`);
+  return new PiAIClient(fullConfig);
 }
 
 /**
- * Anthropic Claude client with tool support
+ * Unified LLM client using pi-ai
  */
-class AnthropicClient implements LLMClient {
-  private client: Anthropic;
+class PiAIClient implements LLMClient {
+  private model: AnyModel;
   private config: LLMConfig;
 
   constructor(config: LLMConfig) {
     this.config = config;
-    this.client = new Anthropic({
-      apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY,
-    });
+
+    // Set API key in environment if provided
+    if (config.apiKey) {
+      const envKey = this.getEnvKeyName(config.provider);
+      process.env[envKey] = config.apiKey;
+    }
+
+    // Get model from pi-ai
+    // The getModel function is type-safe and provides autocomplete
+    this.model = getModel(config.provider as 'openai', config.model as 'gpt-4o');
+  }
+
+  private getEnvKeyName(provider: Provider): string {
+    const envKeys: Record<Provider, string> = {
+      openai: 'OPENAI_API_KEY',
+      anthropic: 'ANTHROPIC_API_KEY',
+      google: 'GOOGLE_API_KEY',
+      mistral: 'MISTRAL_API_KEY',
+      groq: 'GROQ_API_KEY',
+      xai: 'XAI_API_KEY',
+      openrouter: 'OPENROUTER_API_KEY',
+      bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+      azure: 'AZURE_OPENAI_API_KEY',
+      vertex: 'GOOGLE_APPLICATION_CREDENTIALS',
+      cerebras: 'CEREBRAS_API_KEY',
+      github: 'GITHUB_TOKEN',
+      ollama: '', // Ollama doesn't need an API key
+    };
+    return envKeys[provider] || '';
   }
 
   async chat(
@@ -56,28 +96,26 @@ class AnthropicClient implements LLMClient {
     userPrompt: string,
     tools?: Tool[]
   ): Promise<LLMResponse> {
-    // Convert tools to Anthropic format
-    const anthropicTools = tools?.map((t) => this.convertTool(t));
+    // Convert tools to pi-ai format
+    const piTools = tools?.map((t) => this.convertTool(t));
 
-    // Build messages with cache control for system prompt
-    const response = await this.client.messages.create({
-      model: this.config.model,
-      max_tokens: this.config.maxTokens || 4096,
-      temperature: this.config.temperature || 0,
-      system: [
-        {
-          type: 'text',
-          text: systemPrompt,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
+    // Build context
+    const context: Context = {
+      systemPrompt,
       messages: [
         {
           role: 'user',
-          content: userPrompt,
+          content: [{ type: 'text', text: userPrompt }],
+          timestamp: Date.now(),
         },
       ],
-      tools: anthropicTools,
+      tools: piTools,
+    };
+
+    // Make completion request
+    const response = await complete(this.model, context, {
+      maxTokens: this.config.maxTokens,
+      temperature: this.config.temperature,
     });
 
     // Parse response
@@ -85,67 +123,54 @@ class AnthropicClient implements LLMClient {
   }
 
   /**
-   * Convert our tool format to Anthropic's format
+   * Convert our tool format to pi-ai's format
    */
-  private convertTool(tool: Tool): Anthropic.Tool {
+  private convertTool(tool: Tool): PiTool {
+    // Build TypeBox schema from our parameters
+    const properties: Record<string, TSchema> = {};
+
+    for (const [key, value] of Object.entries(tool.parameters.properties)) {
+      if (value.type === 'string') {
+        properties[key] = Type.String({ description: value.description });
+      } else if (value.type === 'number') {
+        properties[key] = Type.Number({ description: value.description });
+      } else if (value.type === 'boolean') {
+        properties[key] = Type.Boolean({ description: value.description });
+      } else if (value.type === 'array') {
+        properties[key] = Type.Array(Type.String(), { description: value.description });
+      } else if (value.type === 'object') {
+        properties[key] = Type.Record(Type.String(), Type.Unknown(), { description: value.description });
+      } else {
+        properties[key] = Type.Unknown({ description: value.description });
+      }
+    }
+
     return {
       name: tool.name,
       description: tool.description,
-      input_schema: {
-        type: 'object',
-        properties: this.convertProperties(tool.parameters.properties),
-        required: tool.parameters.required || [],
-      },
+      parameters: Type.Object(properties),
     };
   }
 
   /**
-   * Convert property definitions
+   * Parse pi-ai response into our format
    */
-  private convertProperties(
-    properties: Record<string, { type: string; description: string; enum?: string[]; items?: { type: string; enum?: string[] } }>
-  ): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(properties)) {
-      const prop: Record<string, unknown> = {
-        type: value.type,
-        description: value.description,
-      };
-
-      if (value.enum) {
-        prop.enum = value.enum;
-      }
-
-      if (value.items) {
-        prop.items = value.items;
-      }
-
-      result[key] = prop;
-    }
-
-    return result;
-  }
-
-  /**
-   * Parse Anthropic response into our format
-   */
-  private parseResponse(response: Anthropic.Message): LLMResponse {
+  private parseResponse(response: { content: Array<{ type: string; text?: string; id?: string; name?: string; arguments?: unknown }> }): LLMResponse {
     let content = '';
     const toolCalls: ToolCall[] = [];
     let thinking: string | undefined;
 
     for (const block of response.content) {
-      if (block.type === 'text') {
+      if (block.type === 'text' && block.text) {
         content += block.text;
-      } else if (block.type === 'tool_use') {
+      } else if (block.type === 'toolCall' && block.id && block.name) {
         toolCalls.push({
           id: block.id,
           name: block.name,
-          args: block.input as Record<string, unknown>,
+          args: (block.arguments as Record<string, unknown>) || {},
         });
-      } else if (block.type === 'thinking') {
-        thinking = (block as { type: 'thinking'; thinking: string }).thinking;
+      } else if (block.type === 'thinking' && block.text) {
+        thinking = block.text;
       }
     }
 

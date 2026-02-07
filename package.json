@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0",
+    "@mariozechner/pi-ai": "^0.52.7",
     "@aws-sdk/client-cloudwatch": "^3.600.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.600.0",
     "@aws-sdk/client-ec2": "^3.600.0",
@@ -32,7 +32,6 @@
     "gray-matter": "^4.0.3",
     "ink": "^5.0.1",
     "ink-spinner": "^5.0.0",
-    "openai": "^4.50.0",
     "react": "^18.3.1",
     "yaml": "^2.4.0",
     "zod": "^3.23.0"
