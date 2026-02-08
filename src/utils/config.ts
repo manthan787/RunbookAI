@@ -215,7 +215,7 @@ export function validateConfig(config: Config): string[] {
 
   const envKey = providerEnvKeys[config.llm.provider];
   if (envKey && !config.llm.apiKey && !process.env[envKey]) {
-    errors.push(`No API key for ${config.llm.provider}. Set ${envKey} environment variable.`);
+    errors.push(`AI model not configured. Run \`runbook init\` to set up your LLM provider, or set the ${envKey} environment variable.`);
   }
 
   // Check AWS if enabled

@@ -232,10 +232,7 @@ Example queries:
     return (
       <Box flexDirection="column" padding={1}>
         <Text color="red" bold>Configuration Error</Text>
-        <Text color="red">{configError}</Text>
-        <Text color="gray" dimColor>
-          Run `runbook init` to set up your configuration.
-        </Text>
+        <Text color="yellow">{configError}</Text>
       </Box>
     );
   }
