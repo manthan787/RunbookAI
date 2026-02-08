@@ -20,6 +20,7 @@ import { deployServiceSkill } from './builtin/deploy-service';
 import { troubleshootServiceSkill } from './builtin/troubleshoot-service';
 import { rollbackDeploymentSkill } from './builtin/rollback-deployment';
 import { costAnalysisSkill } from './builtin/cost-analysis';
+import { investigateCostSpikeSkill } from './builtin/investigate-cost-spike';
 import { securityAuditSkill } from './builtin/security-audit';
 
 class SkillRegistry {
@@ -39,6 +40,7 @@ class SkillRegistry {
       troubleshootServiceSkill,
       rollbackDeploymentSkill,
       costAnalysisSkill,
+      investigateCostSpikeSkill,
       securityAuditSkill,
     ];
 
