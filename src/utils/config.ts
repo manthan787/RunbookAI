@@ -58,6 +58,19 @@ const OpsGenieConfigSchema = z.object({
 const SlackConfigSchema = z.object({
   enabled: z.boolean().default(false),
   botToken: z.string().optional(),
+  appToken: z.string().optional(),
+  signingSecret: z.string().optional(),
+  defaultChannel: z.string().optional(),
+  events: z
+    .object({
+      enabled: z.boolean().default(false),
+      mode: z.enum(['http', 'socket']).default('http'),
+      port: z.number().int().min(1).max(65535).default(3001),
+      alertChannels: z.array(z.string()).default([]),
+      allowedUsers: z.array(z.string()).default([]),
+      requireThreadedMentions: z.boolean().default(false),
+    })
+    .default({}),
 });
 
 const IncidentConfigSchema = z.object({
@@ -245,6 +258,21 @@ export function validateConfig(config: Config): string[] {
   // Check OpsGenie if enabled
   if (config.incident.opsgenie.enabled && !config.incident.opsgenie.apiKey) {
     errors.push('OpsGenie enabled but no API key configured.');
+  }
+
+  // Check Slack events gateway config
+  if (config.incident.slack.events.enabled) {
+    if (!config.incident.slack.botToken) {
+      errors.push('Slack events enabled but no bot token configured.');
+    }
+
+    if (config.incident.slack.events.mode === 'http' && !config.incident.slack.signingSecret) {
+      errors.push('Slack HTTP events mode enabled but no signing secret configured.');
+    }
+
+    if (config.incident.slack.events.mode === 'socket' && !config.incident.slack.appToken) {
+      errors.push('Slack Socket Mode enabled but no app token configured.');
+    }
   }
 
   return errors;

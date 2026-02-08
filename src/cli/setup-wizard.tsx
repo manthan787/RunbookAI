@@ -19,7 +19,24 @@ import { loadConfig } from '../utils/config';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
-type Step = 'welcome' | 'llm_provider' | 'llm_key' | 'account' | 'regions' | 'compute' | 'database' | 'observability' | 'kubernetes' | 'incident' | 'saving' | 'done';
+type Step =
+  | 'welcome'
+  | 'llm_provider'
+  | 'llm_key'
+  | 'account'
+  | 'regions'
+  | 'compute'
+  | 'database'
+  | 'observability'
+  | 'kubernetes'
+  | 'incident'
+  | 'slack_gateway'
+  | 'slack_mode'
+  | 'slack_channels'
+  | 'slack_users'
+  | 'slack_threads'
+  | 'saving'
+  | 'done';
 
 interface SelectOption {
   value: string;
@@ -143,6 +160,11 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
   const [useCloudWatch, setUseCloudWatch] = useState(true);
   const [useKubernetes, setUseKubernetes] = useState(false);
   const [incidentProvider, setIncidentProvider] = useState<'pagerduty' | 'opsgenie' | 'none'>('none');
+  const [useSlackGateway, setUseSlackGateway] = useState(false);
+  const [slackMode, setSlackMode] = useState<'http' | 'socket'>('socket');
+  const [slackAlertChannels, setSlackAlertChannels] = useState('');
+  const [slackAllowedUsers, setSlackAllowedUsers] = useState('');
+  const [slackRequireThreadedMentions, setSlackRequireThreadedMentions] = useState(false);
 
   const getDefaultFocusForStep = (targetStep: Step): number => {
     switch (targetStep) {
@@ -156,6 +178,12 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
         return useKubernetes ? 0 : 1;
       case 'incident':
         return incidentProvider === 'pagerduty' ? 0 : incidentProvider === 'opsgenie' ? 1 : 2;
+      case 'slack_gateway':
+        return useSlackGateway ? 0 : 1;
+      case 'slack_mode':
+        return slackMode === 'socket' ? 0 : 1;
+      case 'slack_threads':
+        return slackRequireThreadedMentions ? 0 : 1;
       default:
         return 0;
     }
@@ -207,6 +235,11 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
           setRegions(mainConfig.providers.aws.regions.join(','));
         }
         setUseKubernetes(mainConfig.providers.kubernetes.enabled);
+        setUseSlackGateway(mainConfig.incident.slack.events.enabled);
+        setSlackMode(mainConfig.incident.slack.events.mode);
+        setSlackAlertChannels((mainConfig.incident.slack.events.alertChannels || []).join(','));
+        setSlackAllowedUsers((mainConfig.incident.slack.events.allowedUsers || []).join(','));
+        setSlackRequireThreadedMentions(mainConfig.incident.slack.events.requireThreadedMentions);
 
         // Service profile config
         if (serviceConfig) {
@@ -295,6 +328,12 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
         return 1;
       case 'incident':
         return ONBOARDING_PROMPTS.incidentProvider.options.length - 1;
+      case 'slack_gateway':
+        return ONBOARDING_PROMPTS.slackGateway.options.length - 1;
+      case 'slack_mode':
+        return ONBOARDING_PROMPTS.slackMode.options.length - 1;
+      case 'slack_threads':
+        return 1;
       default:
         return 0;
     }
@@ -326,6 +365,17 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
         apiKey: llmApiKey || undefined,
       }, {
         enableKubernetes: useKubernetes,
+        enableSlackGateway: useSlackGateway,
+        slackMode,
+        slackAlertChannels: slackAlertChannels
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean),
+        slackAllowedUsers: slackAllowedUsers
+          .split(',')
+          .map((u) => u.trim())
+          .filter(Boolean),
+        slackRequireThreadedMentions,
       });
       setStep('done');
     } catch (err) {
@@ -578,6 +628,118 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
               focusedIndex={focusedIndex}
               onSelect={(value) => {
                 setIncidentProvider(value as 'pagerduty' | 'opsgenie' | 'none');
+                goToStep('slack_gateway');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'slack_gateway':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 10: {ONBOARDING_PROMPTS.slackGateway.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {useSlackGateway ? 'Yes' : 'No'}</Text>
+          )}
+          <Box marginTop={1}>
+            <SingleSelect
+              options={ONBOARDING_PROMPTS.slackGateway.options.map((o) => ({
+                value: String(o.value),
+                label: o.label,
+                description: o.description,
+              }))}
+              focusedIndex={focusedIndex}
+              onSelect={(value) => {
+                const enabled = value === 'true';
+                setUseSlackGateway(enabled);
+                if (!enabled) {
+                  saveConfiguration();
+                  return;
+                }
+                goToStep('slack_mode');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'slack_mode':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 11: {ONBOARDING_PROMPTS.slackMode.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {slackMode}</Text>
+          )}
+          <Box marginTop={1}>
+            <SingleSelect
+              options={ONBOARDING_PROMPTS.slackMode.options}
+              focusedIndex={focusedIndex}
+              onSelect={(value) => {
+                setSlackMode(value as 'http' | 'socket');
+                goToStep('slack_channels');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'slack_channels':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 12: Slack Alert Channels</Text>
+          {hasExistingProfile && slackAlertChannels && (
+            <Text color="gray">Current: {slackAlertChannels}</Text>
+          )}
+          <Box marginTop={1}>
+            <TextInput
+              prompt="Enter channel IDs (comma-separated, e.g., C01234567,C08999999) or leave blank for all:"
+              value={slackAlertChannels}
+              onChange={setSlackAlertChannels}
+              onSubmit={() => {
+                goToStep('slack_users');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'slack_users':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 13: Slack Allowed Users</Text>
+          {hasExistingProfile && slackAllowedUsers && (
+            <Text color="gray">Current: {slackAllowedUsers}</Text>
+          )}
+          <Box marginTop={1}>
+            <TextInput
+              prompt="Enter user IDs allowed to invoke @runbookAI (comma-separated) or leave blank for all:"
+              value={slackAllowedUsers}
+              onChange={setSlackAllowedUsers}
+              onSubmit={() => {
+                goToStep('slack_threads');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'slack_threads':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 14: Require Threaded Mentions?</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {slackRequireThreadedMentions ? 'Yes' : 'No'}</Text>
+          )}
+          <Box marginTop={1}>
+            <SingleSelect
+              options={[
+                { value: 'true', label: 'Yes', description: 'Only handle @runbookAI mentions in threads' },
+                { value: 'false', label: 'No', description: 'Allow mentions in channel root and threads' },
+              ]}
+              focusedIndex={focusedIndex}
+              onSelect={(value) => {
+                setSlackRequireThreadedMentions(value === 'true');
                 saveConfiguration();
               }}
             />
@@ -622,6 +784,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 <Text>• CloudWatch: {useCloudWatch ? 'enabled' : 'disabled'}</Text>
                 <Text>• Kubernetes tools: {useKubernetes ? 'enabled' : 'disabled'}</Text>
                 <Text>• Incidents: {incidentProvider}</Text>
+                <Text>• Slack gateway: {useSlackGateway ? `enabled (${slackMode})` : 'disabled'}</Text>
               </Box>
             </>
           )}

@@ -22,6 +22,7 @@ import { createRetriever } from './knowledge/retriever';
 import type { AgentEvent } from './agent/types';
 import { skillRegistry } from './skills/registry';
 import { getRuntimeTools } from './cli/runtime-tools';
+import { startSlackGateway, executeSlackRequestWithRuntime } from './slack/gateway';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -693,6 +694,98 @@ program
       console.log(chalk.yellow('Press Ctrl+C to stop'));
     } catch (error) {
       console.error(chalk.red(`Failed to start webhook server: ${error instanceof Error ? error.message : error}`));
+      process.exit(1);
+    }
+  });
+
+// Slack events gateway command
+program
+  .command('slack-gateway')
+  .description('Start Slack events gateway for @runbookAI mentions in alert channels')
+  .option('--mode <mode>', 'Gateway mode: http or socket')
+  .option('-p, --port <port>', 'HTTP mode listen port')
+  .option('--channels <channels>', 'Comma-separated Slack channel IDs to allow')
+  .option('--allowed-users <users>', 'Comma-separated Slack user IDs allowed to invoke commands')
+  .option('--require-threaded', 'Only respond to mentions in threads')
+  .action(async (options: {
+    mode?: string;
+    port?: string;
+    channels?: string;
+    allowedUsers?: string;
+    requireThreaded?: boolean;
+  }) => {
+    const config = await loadConfig();
+    const slackConfig = config.incident.slack;
+    const eventsConfig = slackConfig.events;
+
+    const mode = (options.mode || eventsConfig.mode) as 'http' | 'socket';
+    const port = options.port ? parseInt(options.port, 10) : eventsConfig.port;
+    const alertChannels = options.channels
+      ? options.channels.split(',').map((item) => item.trim()).filter(Boolean)
+      : eventsConfig.alertChannels;
+    const allowedUsers = options.allowedUsers
+      ? options.allowedUsers.split(',').map((item) => item.trim()).filter(Boolean)
+      : eventsConfig.allowedUsers;
+    const requireThreadedMentions =
+      options.requireThreaded !== undefined
+        ? options.requireThreaded
+        : eventsConfig.requireThreadedMentions;
+
+    const botToken = slackConfig.botToken || process.env.SLACK_BOT_TOKEN;
+    const signingSecret = slackConfig.signingSecret || process.env.SLACK_SIGNING_SECRET;
+    const appToken = slackConfig.appToken || process.env.SLACK_APP_TOKEN;
+
+    if (!botToken) {
+      console.error(chalk.red('Error: Slack bot token is required (incident.slack.botToken or SLACK_BOT_TOKEN).'));
+      process.exit(1);
+    }
+
+    if (mode === 'http' && !signingSecret) {
+      console.error(chalk.red('Error: Slack signing secret is required for HTTP mode (incident.slack.signingSecret or SLACK_SIGNING_SECRET).'));
+      process.exit(1);
+    }
+
+    if (mode === 'socket' && !appToken) {
+      console.error(chalk.red('Error: Slack app token is required for socket mode (incident.slack.appToken or SLACK_APP_TOKEN).'));
+      process.exit(1);
+    }
+
+    if (mode === 'http' && (isNaN(port) || port < 1 || port > 65535)) {
+      console.error(chalk.red('Error: Invalid port number.'));
+      process.exit(1);
+    }
+
+    console.log(chalk.cyan('Starting Slack events gateway...'));
+    console.log(chalk.gray(`Mode: ${mode}`));
+    if (mode === 'http') {
+      console.log(chalk.gray(`Port: ${port}`));
+    }
+    console.log(chalk.gray(`Allowed channels: ${alertChannels.length > 0 ? alertChannels.join(', ') : 'all'}`));
+    console.log(chalk.gray(`Allowed users: ${allowedUsers.length > 0 ? allowedUsers.join(', ') : 'all'}`));
+    console.log(chalk.gray(`Require threaded mentions: ${requireThreadedMentions ? 'yes' : 'no'}`));
+
+    try {
+      await startSlackGateway({
+        mode,
+        port,
+        botToken,
+        signingSecret,
+        appToken,
+        alertChannels,
+        allowedUsers,
+        requireThreadedMentions,
+        executeRequest: executeSlackRequestWithRuntime,
+      });
+
+      console.log(chalk.green('Slack events gateway is running.'));
+      if (mode === 'http') {
+        console.log(chalk.gray(`Set Slack Events Request URL to: https://your-domain.com/slack/events`));
+      } else {
+        console.log(chalk.gray('Ensure Socket Mode is enabled in your Slack app settings.'));
+      }
+      console.log(chalk.yellow('Press Ctrl+C to stop'));
+    } catch (error) {
+      console.error(chalk.red(`Failed to start Slack events gateway: ${error instanceof Error ? error.message : error}`));
       process.exit(1);
     }
   });

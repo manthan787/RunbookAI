@@ -40,6 +40,13 @@ export interface OnboardingAnswers {
   // Incidents
   incidentProvider: 'pagerduty' | 'opsgenie' | 'none';
   pagerdutyApiKey?: string;
+
+  // Slack gateway
+  useSlackGateway?: boolean;
+  slackMode?: 'http' | 'socket';
+  slackAlertChannels?: string[];
+  slackAllowedUsers?: string[];
+  slackRequireThreadedMentions?: boolean;
 }
 
 /**
@@ -99,7 +106,14 @@ export async function saveConfig(
   config: ServiceConfig,
   configDir: string = '.runbook',
   llmConfig?: { provider: string; apiKey?: string },
-  options?: { enableKubernetes?: boolean }
+  options?: {
+    enableKubernetes?: boolean;
+    enableSlackGateway?: boolean;
+    slackMode?: 'http' | 'socket';
+    slackAlertChannels?: string[];
+    slackAllowedUsers?: string[];
+    slackRequireThreadedMentions?: boolean;
+  }
 ): Promise<string> {
   // Ensure directory exists
   if (!existsSync(configDir)) {
@@ -125,6 +139,13 @@ export async function saveConfig(
   const regions = config.aws.accounts?.[0]?.regions || ['us-east-1'];
   const hasEksService = config.compute.some((service) => service.type === 'eks' && service.enabled);
   const kubernetesEnabled = options?.enableKubernetes ?? hasEksService;
+  const slackGatewayEnabled = options?.enableSlackGateway ?? false;
+  const slackMode = options?.slackMode ?? 'socket';
+  const slackAlertChannels = options?.slackAlertChannels ?? [];
+  const slackAllowedUsers = options?.slackAllowedUsers ?? [];
+  const slackRequireThreadedMentions = options?.slackRequireThreadedMentions ?? false;
+  const pagerdutyEnabled = !!config.incidents.pagerduty.enabled;
+  const opsgenieEnabled = !!config.incidents.opsgenie.enabled;
 
   // Use camelCase to match the config schema
   const mainConfig: Record<string, unknown> = {
@@ -143,6 +164,30 @@ export async function saveConfig(
       },
       kubernetes: {
         enabled: kubernetesEnabled,
+      },
+    },
+    incident: {
+      pagerduty: {
+        enabled: pagerdutyEnabled,
+        apiKey: pagerdutyEnabled ? '${PAGERDUTY_API_KEY}' : undefined,
+      },
+      opsgenie: {
+        enabled: opsgenieEnabled,
+        apiKey: opsgenieEnabled ? '${OPSGENIE_API_KEY}' : undefined,
+      },
+      slack: {
+        enabled: slackGatewayEnabled,
+        botToken: slackGatewayEnabled ? '${SLACK_BOT_TOKEN}' : undefined,
+        appToken: slackGatewayEnabled && slackMode === 'socket' ? '${SLACK_APP_TOKEN}' : undefined,
+        signingSecret: slackGatewayEnabled && slackMode === 'http' ? '${SLACK_SIGNING_SECRET}' : undefined,
+        events: {
+          enabled: slackGatewayEnabled,
+          mode: slackMode,
+          port: 3001,
+          alertChannels: slackAlertChannels,
+          allowedUsers: slackAllowedUsers,
+          requireThreadedMentions: slackRequireThreadedMentions,
+        },
       },
     },
     agent: {
@@ -236,6 +281,7 @@ This wizard will help you set up:
 • Databases (RDS, DynamoDB, ElastiCache, etc.)
 • Observability (CloudWatch, Datadog)
 • Incident management (PagerDuty, OpsGenie)
+• Slack gateway for @runbookAI alert-channel mentions
 `,
 
   accountSetup: {
@@ -288,6 +334,22 @@ This wizard will help you set up:
     options: [
       { value: true, label: 'Yes', description: 'Enable Kubernetes tools in agent runtime' },
       { value: false, label: 'No', description: 'Do not load Kubernetes tools' },
+    ],
+  },
+
+  slackGateway: {
+    question: 'Enable Slack alert-channel gateway for @runbookAI mentions?',
+    options: [
+      { value: true, label: 'Yes', description: 'Enable Slack events gateway and mention routing' },
+      { value: false, label: 'No', description: 'Skip Slack gateway setup for now' },
+    ],
+  },
+
+  slackMode: {
+    question: 'Which Slack gateway mode do you want?',
+    options: [
+      { value: 'socket', label: 'Socket Mode', description: 'Best for local development; no public URL required' },
+      { value: 'http', label: 'HTTP Events API', description: 'Use public Slack Request URL + signing secret' },
     ],
   },
 

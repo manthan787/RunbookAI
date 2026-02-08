@@ -106,6 +106,20 @@ Search the knowledge base.
 runbook knowledge search "redis connection timeout"
 ```
 
+### `runbook slack-gateway`
+
+Start Slack mention/event handling for `@runbookAI` requests in alert channels.
+
+```bash
+# Local development (Socket Mode)
+runbook slack-gateway --mode socket
+
+# HTTP Events API mode
+runbook slack-gateway --mode http --port 3001
+```
+
+See setup details in [docs/SLACK_GATEWAY.md](./docs/SLACK_GATEWAY.md).
+
 ## Configuration
 
 Create `.runbook/config.yaml`:
@@ -132,6 +146,15 @@ incident:
   slack:
     enabled: false
     botToken: ${SLACK_BOT_TOKEN}
+    appToken: ${SLACK_APP_TOKEN}
+    signingSecret: ${SLACK_SIGNING_SECRET}
+    events:
+      enabled: false
+      mode: socket
+      port: 3001
+      alertChannels: [C01234567]
+      allowedUsers: [U01234567]
+      requireThreadedMentions: true
 
 knowledge:
   sources:
