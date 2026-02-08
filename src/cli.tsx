@@ -316,27 +316,6 @@ program
     }
   });
 
-// Config command
-program
-  .command('config')
-  .description('Show current configuration')
-  .option('--services', 'Show services configuration')
-  .action(async (options: { services?: boolean }) => {
-    if (options.services) {
-      const serviceConfig = await loadServiceConfig();
-      if (serviceConfig) {
-        console.log(chalk.cyan('Services Configuration:'));
-        console.log(JSON.stringify(serviceConfig, null, 2));
-      } else {
-        console.log(chalk.yellow('No services configured. Run "runbook init" to set up.'));
-      }
-    } else {
-      const config = await loadConfig();
-      console.log(chalk.cyan('Current Configuration:'));
-      console.log(JSON.stringify(config, null, 2));
-    }
-  });
-
 // Knowledge commands
 const knowledge = program
   .command('knowledge')
