@@ -18,6 +18,7 @@ export type KnowledgeType =
 export type SourceType =
   | 'filesystem'
   | 'confluence'
+  | 'google_drive'
   | 'notion'
   | 'github'
   | 'pagerduty'
@@ -83,6 +84,7 @@ export interface KnowledgeSource {
 export type KnowledgeSourceConfig =
   | FilesystemSourceConfig
   | ConfluenceSourceConfig
+  | GoogleDriveSourceConfig
   | NotionSourceConfig
   | GitHubSourceConfig
   | ApiSourceConfig;
@@ -103,6 +105,18 @@ export interface ConfluenceSourceConfig {
     email: string;
     apiToken: string;
   };
+  lastSyncTime?: string;
+}
+
+export interface GoogleDriveSourceConfig {
+  type: 'google_drive';
+  folderIds: string[];
+  clientId: string;
+  clientSecret: string;
+  refreshToken?: string;
+  mimeTypes?: string[];
+  includeSubfolders?: boolean;
+  lastSyncTime?: string;
 }
 
 export interface NotionSourceConfig {

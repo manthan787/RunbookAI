@@ -621,7 +621,7 @@ knowledge
       let services: string[] = [];
 
       if (ext === '.md' || ext === '.markdown') {
-        const { data: frontmatter, content: body } = matter(content);
+        const { data: frontmatter } = matter(content);
         title = frontmatter.title || basename(filePath, ext);
         docType = frontmatter.type || options.type || 'runbook';
         services = frontmatter.services || [];
@@ -744,6 +744,95 @@ knowledge
       console.error(
         chalk.red(`Failed to get stats: ${error instanceof Error ? error.message : error}`)
       );
+    }
+  });
+
+// Auth subcommand for knowledge sources
+const auth = knowledge.command('auth').description('Authenticate with knowledge sources');
+
+auth
+  .command('google')
+  .description('Authenticate with Google Drive for knowledge sync')
+  .option('--client-id <id>', 'Google OAuth client ID (or set GOOGLE_CLIENT_ID)')
+  .option('--client-secret <secret>', 'Google OAuth client secret (or set GOOGLE_CLIENT_SECRET)')
+  .action(async (options: { clientId?: string; clientSecret?: string }) => {
+    const { completeOAuthFlow } = await import('./knowledge/sources/google-auth');
+    const { readFile, writeFile, mkdir } = await import('fs/promises');
+    const { parse: parseYaml, stringify: stringifyYaml } = await import('yaml');
+    const { existsSync } = await import('fs');
+
+    const clientId = options.clientId || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = options.clientSecret || process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error(chalk.red('Error: Google OAuth credentials required.'));
+      console.log(chalk.yellow('\nProvide credentials via:'));
+      console.log(chalk.gray('  --client-id and --client-secret options, or'));
+      console.log(chalk.gray('  GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables'));
+      console.log(chalk.yellow('\nTo obtain credentials:'));
+      console.log(chalk.gray('  1. Go to Google Cloud Console: https://console.cloud.google.com'));
+      console.log(chalk.gray('  2. Create or select a project'));
+      console.log(chalk.gray('  3. Enable Google Drive API and Google Docs API'));
+      console.log(chalk.gray('  4. Create OAuth 2.0 credentials (Desktop app type)'));
+      console.log(chalk.gray('  5. Add http://localhost:8085/oauth/callback as redirect URI'));
+      process.exit(1);
+    }
+
+    console.log(chalk.cyan('Starting Google Drive authentication...'));
+
+    try {
+      const tokens = await completeOAuthFlow(clientId, clientSecret);
+
+      // Save refresh token to config
+      const configPath = '.runbook/config.yaml';
+      let config: Record<string, unknown> = {};
+
+      if (existsSync(configPath)) {
+        const content = await readFile(configPath, 'utf-8');
+        config = parseYaml(content) || {};
+      }
+
+      // Initialize knowledge.sources if needed
+      if (!config.knowledge) {
+        config.knowledge = {};
+      }
+      const knowledgeConfig = config.knowledge as Record<string, unknown>;
+      if (!knowledgeConfig.sources) {
+        knowledgeConfig.sources = [];
+      }
+
+      // Find or create google_drive source
+      const sources = knowledgeConfig.sources as Array<Record<string, unknown>>;
+      let googleSource = sources.find((s) => s.type === 'google_drive');
+
+      if (!googleSource) {
+        googleSource = {
+          type: 'google_drive',
+          folderIds: [],
+          clientId: '${GOOGLE_CLIENT_ID}',
+          clientSecret: '${GOOGLE_CLIENT_SECRET}',
+          refreshToken: tokens.refreshToken,
+          includeSubfolders: true,
+        };
+        sources.push(googleSource);
+      } else {
+        googleSource.refreshToken = tokens.refreshToken;
+      }
+
+      await mkdir('.runbook', { recursive: true });
+      await writeFile(configPath, stringifyYaml(config));
+
+      console.log(chalk.green('\nGoogle Drive authentication successful!'));
+      console.log(chalk.gray(`Refresh token saved to ${configPath}`));
+      console.log(chalk.yellow('\nNext steps:'));
+      console.log(chalk.gray('  1. Add folder IDs to your config:'));
+      console.log(chalk.gray('     knowledge.sources[].folderIds: ["your-folder-id"]'));
+      console.log(chalk.gray('  2. Run "runbook knowledge sync" to sync documents'));
+    } catch (error) {
+      console.error(
+        chalk.red(`Authentication failed: ${error instanceof Error ? error.message : error}`)
+      );
+      process.exit(1);
     }
   });
 

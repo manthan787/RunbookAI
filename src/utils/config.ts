@@ -82,7 +82,7 @@ const IncidentConfigSchema = z.object({
 });
 
 const KnowledgeSourceSchema = z.object({
-  type: z.enum(['filesystem', 'confluence', 'notion', 'github', 'api']),
+  type: z.enum(['filesystem', 'confluence', 'google_drive', 'notion', 'github', 'api']),
   path: z.string().optional(),
   watch: z.boolean().optional(),
   syncSchedule: z.string().optional(),
@@ -93,6 +93,22 @@ const KnowledgeSourceSchema = z.object({
   labels: z.array(z.string()).optional(),
   databaseId: z.string().optional(),
   endpoint: z.string().optional(),
+  // Confluence fields
+  baseUrl: z.string().optional(),
+  auth: z
+    .object({
+      email: z.string(),
+      apiToken: z.string(),
+    })
+    .optional(),
+  // Google Drive fields
+  folderIds: z.array(z.string()).optional(),
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  refreshToken: z.string().optional(),
+  mimeTypes: z.array(z.string()).optional(),
+  includeSubfolders: z.boolean().optional(),
+  lastSyncTime: z.string().optional(),
 });
 
 const KnowledgeStoreSchema = z.object({

@@ -7,12 +7,17 @@
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { KnowledgeStore } from '../store/sqlite';
-import { loadFromFilesystem } from '../sources/filesystem';
-import type { RetrievedKnowledge, KnowledgeType, FilesystemSourceConfig } from '../types';
+import { loadFromSource } from '../sources';
+import type {
+  RetrievedKnowledge,
+  KnowledgeType,
+  KnowledgeSourceConfig,
+  FilesystemSourceConfig,
+} from '../types';
 
 export interface RetrieverConfig {
   storePath: string;
-  sources: FilesystemSourceConfig[];
+  sources: KnowledgeSourceConfig[];
 }
 
 export class KnowledgeRetriever {
@@ -40,7 +45,8 @@ export class KnowledgeRetriever {
     let updated = 0;
 
     for (const source of this.config.sources) {
-      const documents = await loadFromFilesystem(source);
+      const lastSync = 'lastSyncTime' in source ? source.lastSyncTime : undefined;
+      const documents = await loadFromSource(source, { since: lastSync });
 
       for (const doc of documents) {
         const existing = this.store.getDocument(doc.id);
@@ -50,6 +56,11 @@ export class KnowledgeRetriever {
           added++;
         }
         this.store.upsertDocument(doc);
+      }
+
+      // Update lastSyncTime for incremental sync support
+      if ('lastSyncTime' in source) {
+        (source as { lastSyncTime?: string }).lastSyncTime = new Date().toISOString();
       }
     }
 
