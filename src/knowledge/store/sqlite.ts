@@ -90,11 +90,11 @@ export class KnowledgeStore {
       JSON.stringify(doc.tags),
       JSON.stringify(doc.symptoms || []),
       JSON.stringify(doc.severityRelevance),
-      doc.sourceUrl,
-      doc.author,
-      doc.createdAt,
-      doc.updatedAt,
-      doc.lastValidated
+      this.toNullableText(doc.sourceUrl),
+      this.toNullableText(doc.author),
+      this.toNullableText(doc.createdAt),
+      this.toNullableText(doc.updatedAt),
+      this.toNullableText(doc.lastValidated)
     );
 
     // Delete old chunks
@@ -131,9 +131,12 @@ export class KnowledgeStore {
     } = {}
   ): RetrievedChunk[] {
     const limit = options.limit || 10;
+    const safeQuery = typeof query === 'string' ? query : String(query ?? '');
+    const typeFilter = this.normalizeStringArray(options.typeFilter);
+    const serviceFilter = this.normalizeStringArray(options.serviceFilter);
 
     // Build FTS query
-    const ftsTerms = query
+    const ftsTerms = safeQuery
       .split(/\s+/)
       .filter((t) => t.length > 2)
       .map((t) => `"${t}"*`)
@@ -164,16 +167,16 @@ export class KnowledgeStore {
     const params: (string | number)[] = [ftsTerms];
 
     // Add type filter
-    if (options.typeFilter && options.typeFilter.length > 0) {
-      sql += ` AND d.type IN (${options.typeFilter.map(() => '?').join(',')})`;
-      params.push(...options.typeFilter);
+    if (typeFilter.length > 0) {
+      sql += ` AND d.type IN (${typeFilter.map(() => '?').join(',')})`;
+      params.push(...typeFilter);
     }
 
     // Add service filter
-    if (options.serviceFilter && options.serviceFilter.length > 0) {
-      const serviceConditions = options.serviceFilter.map(() => `d.services LIKE ?`).join(' OR ');
+    if (serviceFilter.length > 0) {
+      const serviceConditions = serviceFilter.map(() => `d.services LIKE ?`).join(' OR ');
       sql += ` AND (${serviceConditions})`;
-      params.push(...options.serviceFilter.map((s) => `%"${s}"%`));
+      params.push(...serviceFilter.map((s) => `%"${s}"%`));
     }
 
     sql += ` ORDER BY score LIMIT ?`;
@@ -246,7 +249,11 @@ export class KnowledgeStore {
   private rowToDocument(row: Record<string, unknown>): KnowledgeDocument {
     return {
       id: row.id as string,
-      source: { type: 'filesystem', name: 'local', config: { type: 'filesystem', path: '', filePatterns: [] } },
+      source: {
+        type: 'filesystem',
+        name: 'local',
+        config: { type: 'filesystem', path: '', filePatterns: [] },
+      },
       type: row.type as KnowledgeType,
       title: row.title as string,
       content: row.content as string,
@@ -285,5 +292,40 @@ export class KnowledgeStore {
    */
   close(): void {
     this.db.close();
+  }
+
+  private toNullableText(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+      return String(value);
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  private normalizeStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item === null || item === undefined) return '';
+        if (item instanceof Date) return item.toISOString();
+        return String(item);
+      })
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
   }
 }
