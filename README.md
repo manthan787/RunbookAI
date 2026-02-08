@@ -58,6 +58,9 @@ bun run dev ask "Show cluster status, top nodes, and any warning events"
 # Investigate an incident
 bun run dev investigate PD-12345
 
+# Investigate + execute remediation steps via skills
+bun run dev investigate PD-12345 --auto-remediate
+
 # Get a status overview
 bun run dev status
 ```
@@ -80,6 +83,7 @@ Perform a hypothesis-driven investigation of a PagerDuty or OpsGenie incident.
 
 ```bash
 runbook investigate PD-12345
+runbook investigate PD-12345 --auto-remediate
 ```
 
 The agent will:

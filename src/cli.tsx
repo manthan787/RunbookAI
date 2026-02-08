@@ -23,7 +23,11 @@ import type { AgentEvent } from './agent/types';
 import { skillRegistry } from './skills/registry';
 import { getRuntimeTools } from './cli/runtime-tools';
 import { startSlackGateway, executeSlackRequestWithRuntime } from './slack/gateway';
-import { createOrchestrator, type InvestigationEvent } from './agent/investigation-orchestrator';
+import {
+  createOrchestrator,
+  type InvestigationEvent,
+  type RemediationContext,
+} from './agent/investigation-orchestrator';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -254,10 +258,19 @@ async function runSimple(query: string, incidentId?: string) {
  * Structured investigation mode for incident command.
  * Uses the dedicated investigation state machine + orchestrator pipeline.
  */
-async function runStructuredInvestigation(incidentId: string, verbose: boolean) {
+async function runStructuredInvestigation(
+  incidentId: string,
+  verbose: boolean,
+  autoRemediate: boolean
+) {
   console.log(chalk.cyan('Runbook Investigation'));
   console.log(chalk.gray('─'.repeat(40)));
   console.log(`Incident: ${incidentId}`);
+  if (autoRemediate) {
+    console.log(
+      chalk.yellow('Auto-remediation enabled (steps execute via skills when available).')
+    );
+  }
   console.log();
 
   const config = await loadConfig();
@@ -273,6 +286,8 @@ async function runStructuredInvestigation(incidentId: string, verbose: boolean) 
     model: config.llm.model,
     apiKey: config.llm.apiKey,
   });
+  await skillRegistry.loadUserSkills();
+  const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
   const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
   const toolsByName = new Map(runtimeTools.map((tool) => [tool.name, tool]));
 
@@ -298,6 +313,29 @@ async function runStructuredInvestigation(incidentId: string, verbose: boolean) 
     {
       incidentId,
       maxIterations: config.agent.maxIterations,
+      autoApproveRemediation: autoRemediate,
+      availableSkills: runtimeSkills,
+      fetchRelevantRunbooks: async (context: RemediationContext) => {
+        const retriever = createRetriever();
+        try {
+          const searchQuery = [context.rootCause, ...context.affectedServices].join(' ').trim();
+          const results = await retriever.search(
+            searchQuery || context.incidentId || 'incident remediation',
+            {
+              typeFilter: ['runbook'],
+              serviceFilter:
+                context.affectedServices.length > 0 ? context.affectedServices : undefined,
+              limit: 12,
+            }
+          );
+
+          return Array.from(
+            new Set(results.runbooks.map((runbook) => runbook.title).filter(Boolean))
+          ).slice(0, 8);
+        } finally {
+          retriever.close();
+        }
+      },
     }
   );
 
@@ -329,6 +367,14 @@ async function runStructuredInvestigation(incidentId: string, verbose: boolean) 
         break;
       case 'error':
         console.log(chalk.red(`✗ ${event.phase}: ${event.error.message}`));
+        break;
+      case 'remediation_step':
+        if (verbose || autoRemediate) {
+          const symbol = event.status === 'completed' ? '✓' : event.status === 'failed' ? '✗' : '→';
+          console.log(
+            chalk.magenta(`  ${symbol} Remediation: ${event.step.action} [${event.status}]`)
+          );
+        }
         break;
     }
   });
@@ -406,9 +452,14 @@ program
   .command('investigate <incident-id>')
   .description('Investigate a PagerDuty/OpsGenie incident')
   .option('-v, --verbose', 'Show detailed output')
-  .action(async (incidentId: string, options: { verbose?: boolean }) => {
+  .option('--auto-remediate', 'Attempt to execute remediation steps through runtime skills')
+  .action(async (incidentId: string, options: { verbose?: boolean; autoRemediate?: boolean }) => {
     try {
-      await runStructuredInvestigation(incidentId, options.verbose || false);
+      await runStructuredInvestigation(
+        incidentId,
+        options.verbose || false,
+        options.autoRemediate || false
+      );
     } catch (error) {
       console.error(
         chalk.red(
@@ -422,7 +473,7 @@ program
           <AgentUI
             query={fallbackQuery}
             incidentId={incidentId}
-            verbose={options.verbose || false}
+            verbose={options.verbose || options.autoRemediate || false}
           />
         );
       } else {
@@ -874,88 +925,122 @@ program
   .option('--channels <channels>', 'Comma-separated Slack channel IDs to allow')
   .option('--allowed-users <users>', 'Comma-separated Slack user IDs allowed to invoke commands')
   .option('--require-threaded', 'Only respond to mentions in threads')
-  .action(async (options: {
-    mode?: string;
-    port?: string;
-    channels?: string;
-    allowedUsers?: string;
-    requireThreaded?: boolean;
-  }) => {
-    const config = await loadConfig();
-    const slackConfig = config.incident.slack;
-    const eventsConfig = slackConfig.events;
+  .action(
+    async (options: {
+      mode?: string;
+      port?: string;
+      channels?: string;
+      allowedUsers?: string;
+      requireThreaded?: boolean;
+    }) => {
+      const config = await loadConfig();
+      const slackConfig = config.incident.slack;
+      const eventsConfig = slackConfig.events;
 
-    const mode = (options.mode || eventsConfig.mode) as 'http' | 'socket';
-    const port = options.port ? parseInt(options.port, 10) : eventsConfig.port;
-    const alertChannels = options.channels
-      ? options.channels.split(',').map((item) => item.trim()).filter(Boolean)
-      : eventsConfig.alertChannels;
-    const allowedUsers = options.allowedUsers
-      ? options.allowedUsers.split(',').map((item) => item.trim()).filter(Boolean)
-      : eventsConfig.allowedUsers;
-    const requireThreadedMentions =
-      options.requireThreaded !== undefined
-        ? options.requireThreaded
-        : eventsConfig.requireThreadedMentions;
+      const mode = (options.mode || eventsConfig.mode) as 'http' | 'socket';
+      const port = options.port ? parseInt(options.port, 10) : eventsConfig.port;
+      const alertChannels = options.channels
+        ? options.channels
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : eventsConfig.alertChannels;
+      const allowedUsers = options.allowedUsers
+        ? options.allowedUsers
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : eventsConfig.allowedUsers;
+      const requireThreadedMentions =
+        options.requireThreaded !== undefined
+          ? options.requireThreaded
+          : eventsConfig.requireThreadedMentions;
 
-    const botToken = slackConfig.botToken || process.env.SLACK_BOT_TOKEN;
-    const signingSecret = slackConfig.signingSecret || process.env.SLACK_SIGNING_SECRET;
-    const appToken = slackConfig.appToken || process.env.SLACK_APP_TOKEN;
+      const botToken = slackConfig.botToken || process.env.SLACK_BOT_TOKEN;
+      const signingSecret = slackConfig.signingSecret || process.env.SLACK_SIGNING_SECRET;
+      const appToken = slackConfig.appToken || process.env.SLACK_APP_TOKEN;
 
-    if (!botToken) {
-      console.error(chalk.red('Error: Slack bot token is required (incident.slack.botToken or SLACK_BOT_TOKEN).'));
-      process.exit(1);
-    }
-
-    if (mode === 'http' && !signingSecret) {
-      console.error(chalk.red('Error: Slack signing secret is required for HTTP mode (incident.slack.signingSecret or SLACK_SIGNING_SECRET).'));
-      process.exit(1);
-    }
-
-    if (mode === 'socket' && !appToken) {
-      console.error(chalk.red('Error: Slack app token is required for socket mode (incident.slack.appToken or SLACK_APP_TOKEN).'));
-      process.exit(1);
-    }
-
-    if (mode === 'http' && (isNaN(port) || port < 1 || port > 65535)) {
-      console.error(chalk.red('Error: Invalid port number.'));
-      process.exit(1);
-    }
-
-    console.log(chalk.cyan('Starting Slack events gateway...'));
-    console.log(chalk.gray(`Mode: ${mode}`));
-    if (mode === 'http') {
-      console.log(chalk.gray(`Port: ${port}`));
-    }
-    console.log(chalk.gray(`Allowed channels: ${alertChannels.length > 0 ? alertChannels.join(', ') : 'all'}`));
-    console.log(chalk.gray(`Allowed users: ${allowedUsers.length > 0 ? allowedUsers.join(', ') : 'all'}`));
-    console.log(chalk.gray(`Require threaded mentions: ${requireThreadedMentions ? 'yes' : 'no'}`));
-
-    try {
-      await startSlackGateway({
-        mode,
-        port,
-        botToken,
-        signingSecret,
-        appToken,
-        alertChannels,
-        allowedUsers,
-        requireThreadedMentions,
-        executeRequest: executeSlackRequestWithRuntime,
-      });
-
-      console.log(chalk.green('Slack events gateway is running.'));
-      if (mode === 'http') {
-        console.log(chalk.gray(`Set Slack Events Request URL to: https://your-domain.com/slack/events`));
-      } else {
-        console.log(chalk.gray('Ensure Socket Mode is enabled in your Slack app settings.'));
+      if (!botToken) {
+        console.error(
+          chalk.red(
+            'Error: Slack bot token is required (incident.slack.botToken or SLACK_BOT_TOKEN).'
+          )
+        );
+        process.exit(1);
       }
-      console.log(chalk.yellow('Press Ctrl+C to stop'));
-    } catch (error) {
-      console.error(chalk.red(`Failed to start Slack events gateway: ${error instanceof Error ? error.message : error}`));
-      process.exit(1);
+
+      if (mode === 'http' && !signingSecret) {
+        console.error(
+          chalk.red(
+            'Error: Slack signing secret is required for HTTP mode (incident.slack.signingSecret or SLACK_SIGNING_SECRET).'
+          )
+        );
+        process.exit(1);
+      }
+
+      if (mode === 'socket' && !appToken) {
+        console.error(
+          chalk.red(
+            'Error: Slack app token is required for socket mode (incident.slack.appToken or SLACK_APP_TOKEN).'
+          )
+        );
+        process.exit(1);
+      }
+
+      if (mode === 'http' && (isNaN(port) || port < 1 || port > 65535)) {
+        console.error(chalk.red('Error: Invalid port number.'));
+        process.exit(1);
+      }
+
+      console.log(chalk.cyan('Starting Slack events gateway...'));
+      console.log(chalk.gray(`Mode: ${mode}`));
+      if (mode === 'http') {
+        console.log(chalk.gray(`Port: ${port}`));
+      }
+      console.log(
+        chalk.gray(
+          `Allowed channels: ${alertChannels.length > 0 ? alertChannels.join(', ') : 'all'}`
+        )
+      );
+      console.log(
+        chalk.gray(`Allowed users: ${allowedUsers.length > 0 ? allowedUsers.join(', ') : 'all'}`)
+      );
+      console.log(
+        chalk.gray(`Require threaded mentions: ${requireThreadedMentions ? 'yes' : 'no'}`)
+      );
+
+      try {
+        await startSlackGateway({
+          mode,
+          port,
+          botToken,
+          signingSecret,
+          appToken,
+          alertChannels,
+          allowedUsers,
+          requireThreadedMentions,
+          executeRequest: executeSlackRequestWithRuntime,
+        });
+
+        console.log(chalk.green('Slack events gateway is running.'));
+        if (mode === 'http') {
+          console.log(
+            chalk.gray(`Set Slack Events Request URL to: https://your-domain.com/slack/events`)
+          );
+        } else {
+          console.log(chalk.gray('Ensure Socket Mode is enabled in your Slack app settings.'));
+        }
+        console.log(chalk.yellow('Press Ctrl+C to stop'));
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `Failed to start Slack events gateway: ${error instanceof Error ? error.message : error}`
+          )
+        );
+        process.exit(1);
+      }
     }
-  });
+  );
 
 // Parse and run
 program.parse();

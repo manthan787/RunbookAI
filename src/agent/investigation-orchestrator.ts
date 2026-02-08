@@ -38,11 +38,7 @@ import {
   type HypothesisGeneration,
 } from './llm-parser';
 
-import {
-  analyzeLogs,
-  analyzePatterns,
-  type LogAnalysisResult,
-} from './log-analyzer';
+import { analyzeLogs, analyzePatterns, type LogAnalysisResult } from './log-analyzer';
 
 import {
   generateQueriesForHypothesis,
@@ -71,6 +67,12 @@ export interface ToolExecutor {
   execute(toolName: string, parameters: Record<string, unknown>): Promise<unknown>;
 }
 
+export interface RemediationContext {
+  incidentId?: string;
+  rootCause: string;
+  affectedServices: string[];
+}
+
 /**
  * Investigation options
  */
@@ -80,6 +82,8 @@ export interface InvestigationOptions {
   autoApproveRemediation?: boolean;
   knownServices?: string[];
   slackChannel?: string;
+  availableSkills?: string[];
+  fetchRelevantRunbooks?: (context: RemediationContext) => Promise<string[]>;
 }
 
 /**
@@ -127,11 +131,7 @@ export class InvestigationOrchestrator {
   private readonly options: InvestigationOptions;
   private readonly eventHandlers: InvestigationEventHandler[] = [];
 
-  constructor(
-    llm: LLMClient,
-    toolExecutor: ToolExecutor,
-    options: InvestigationOptions = {}
-  ) {
+  constructor(llm: LLMClient, toolExecutor: ToolExecutor, options: InvestigationOptions = {}) {
     this.llm = llm;
     this.toolExecutor = toolExecutor;
     this.options = options;
@@ -160,6 +160,29 @@ export class InvestigationOrchestrator {
       } catch (e) {
         console.error('Event handler error:', e);
       }
+    }
+  }
+
+  private formatPromptList(items: string[], emptyMessage: string): string {
+    if (items.length === 0) {
+      return emptyMessage;
+    }
+    return items.map((item) => `- ${item}`).join('\n');
+  }
+
+  private async resolveRelevantRunbooks(context: RemediationContext): Promise<string[]> {
+    if (!this.options.fetchRelevantRunbooks) {
+      return [];
+    }
+
+    try {
+      const runbooks = await this.options.fetchRelevantRunbooks(context);
+      return Array.from(new Set(runbooks.map((runbook) => runbook.trim()).filter(Boolean))).slice(
+        0,
+        10
+      );
+    } catch {
+      return [];
     }
   }
 
@@ -386,7 +409,10 @@ export class InvestigationOrchestrator {
       evidenceData: null,
       reasoning: hypothesis.reasoning || null,
       children: [],
-      status: hypothesis.status === 'pending' ? 'active' as const : hypothesis.status as 'active' | 'pruned' | 'confirmed',
+      status:
+        hypothesis.status === 'pending'
+          ? ('active' as const)
+          : (hypothesis.status as 'active' | 'pruned' | 'confirmed'),
       createdAt: hypothesis.createdAt.toISOString(),
     };
 
@@ -485,10 +511,11 @@ export class InvestigationOrchestrator {
     const prompt = fillPrompt(PROMPTS.generateConclusion, {
       hypothesis: confirmedHypothesis?.statement || allHypotheses[0]?.statement || 'Unknown',
       evidence: JSON.stringify(evidenceChain, null, 2),
-      alternatives: allHypotheses
-        .filter((h) => h.status === 'pruned')
-        .map((h) => `- ${h.statement}: ${h.reasoning || 'No evidence'}`)
-        .join('\n') || 'None',
+      alternatives:
+        allHypotheses
+          .filter((h) => h.status === 'pruned')
+          .map((h) => `- ${h.statement}: ${h.reasoning || 'No evidence'}`)
+          .join('\n') || 'None',
     });
 
     const response = await this.llm.complete(prompt);
@@ -516,12 +543,18 @@ export class InvestigationOrchestrator {
     machine.transitionTo('remediate', 'Starting remediation planning');
 
     const triage = machine.getState().triage;
+    const availableSkills = this.options.availableSkills || [];
+    const relevantRunbooks = await this.resolveRelevantRunbooks({
+      incidentId: this.options.incidentId,
+      rootCause: conclusion.rootCause,
+      affectedServices: triage?.affectedServices || [],
+    });
 
     const prompt = fillPrompt(PROMPTS.generateRemediation, {
       rootCause: conclusion.rootCause,
       services: triage?.affectedServices.join(', ') || 'Unknown',
-      skills: 'deploy-service, scale-service, rollback-deployment', // TODO: Get from skill registry
-      runbooks: 'None found', // TODO: Search knowledge base
+      skills: this.formatPromptList(availableSkills, 'No skills available'),
+      runbooks: this.formatPromptList(relevantRunbooks, 'None found'),
     });
 
     const response = await this.llm.complete(prompt);
@@ -559,27 +592,37 @@ export class InvestigationOrchestrator {
       this.emit({ type: 'remediation_step', step, status: 'executing' });
 
       try {
-        if (step.command) {
-          // Execute the command through a bash tool or similar
-          const result = await this.toolExecutor.execute('execute_command', {
-            command: step.command,
+        if (step.matchingSkill) {
+          const result = await this.toolExecutor.execute('skill', {
+            name: step.matchingSkill,
+            args: {
+              action: step.action,
+              description: step.description,
+              command: step.command,
+              rollbackCommand: step.rollbackCommand,
+            },
           });
+
+          if (
+            typeof result === 'object' &&
+            result !== null &&
+            'error' in result &&
+            typeof (result as { error?: unknown }).error === 'string'
+          ) {
+            throw new Error((result as { error: string }).error);
+          }
+
           machine.updateRemediationStep(step.id, {
             status: 'completed',
             result,
           });
-        } else if (step.matchingSkill) {
-          // Execute through skill
-          const result = await this.toolExecutor.execute('invoke_skill', {
-            skill: step.matchingSkill,
-            action: step.action,
-          });
+        } else if (step.command) {
           machine.updateRemediationStep(step.id, {
-            status: 'completed',
-            result,
+            status: 'skipped',
+            error:
+              'Direct command execution is disabled for auto-remediation. Execute manually or map this step to a skill.',
           });
         } else {
-          // Mark as skipped if no execution method
           machine.updateRemediationStep(step.id, {
             status: 'skipped',
             error: 'No execution method available',

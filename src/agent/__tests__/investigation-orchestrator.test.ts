@@ -32,9 +32,7 @@ const mockHypothesisResponse = JSON.stringify({
       priority: 1,
       confirmingEvidence: 'High number of waiting connections',
       refutingEvidence: 'Connection count is normal',
-      queries: [
-        { type: 'metrics', description: 'Check connection count' },
-      ],
+      queries: [{ type: 'metrics', description: 'Check connection count' }],
     },
     {
       statement: 'Network latency between services',
@@ -42,9 +40,7 @@ const mockHypothesisResponse = JSON.stringify({
       priority: 2,
       confirmingEvidence: 'High inter-service latency',
       refutingEvidence: 'Normal network metrics',
-      queries: [
-        { type: 'metrics', description: 'Check network latency' },
-      ],
+      queries: [{ type: 'metrics', description: 'Check network latency' }],
     },
   ],
   reasoning: 'Based on symptoms, database and network issues are most likely',
@@ -72,9 +68,7 @@ const mockConclusionResponse = JSON.stringify({
   rootCause: 'Database connection pool exhausted due to connection leak',
   confidence: 'high',
   confirmedHypothesisId: 'h_1',
-  evidenceChain: [
-    { finding: 'Connection pool at 100%', source: 'cloudwatch', strength: 'strong' },
-  ],
+  evidenceChain: [{ finding: 'Connection pool at 100%', source: 'cloudwatch', strength: 'strong' }],
   alternativeExplanations: ['Network issues were ruled out'],
   unknowns: ['Exact code path causing the leak'],
 });
@@ -91,6 +85,34 @@ const mockRemediationResponse = JSON.stringify({
   ],
   estimatedRecoveryTime: '5 minutes',
   monitoring: ['Watch connection count', 'Monitor error rate'],
+});
+
+const mockRemediationWithSkillResponse = JSON.stringify({
+  steps: [
+    {
+      action: 'Redeploy user-service',
+      description: 'Redeploy to clear stale DB connection state',
+      riskLevel: 'medium',
+      requiresApproval: false,
+      matchingSkill: 'deploy-service',
+    },
+  ],
+  estimatedRecoveryTime: '7 minutes',
+  monitoring: ['Watch p99 latency', 'Monitor DB connection saturation'],
+});
+
+const mockRemediationCommandOnlyResponse = JSON.stringify({
+  steps: [
+    {
+      action: 'Run an AWS CLI command manually',
+      description: 'Force a deployment using CLI',
+      command: 'aws ecs update-service --force-new-deployment',
+      riskLevel: 'medium',
+      requiresApproval: false,
+    },
+  ],
+  estimatedRecoveryTime: '10 minutes',
+  monitoring: ['Watch service stability'],
 });
 
 describe('InvestigationOrchestrator', () => {
@@ -322,6 +344,79 @@ describe('InvestigationOrchestrator', () => {
       const result = await orchestrator.investigate('Why is the API slow?');
       expect(result).toBeDefined();
     });
+
+    it('should execute remediation through the skill tool when auto-approve is enabled', async () => {
+      let callIndex = 0;
+      const complete = vi.fn().mockImplementation(async () => {
+        callIndex++;
+        if (callIndex === 1) return mockTriageResponse;
+        if (callIndex === 2) return mockHypothesisResponse;
+        if (callIndex === 3) return mockEvidenceEvaluationConfirm;
+        if (callIndex === 4) return mockConclusionResponse;
+        if (callIndex === 5) return mockRemediationWithSkillResponse;
+        return mockEvidenceEvaluationPrune;
+      });
+      const llm: LLMClient = { complete };
+
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'cloudwatch_logs') return [{ message: 'Connection timeout after 30s' }];
+        if (tool === 'datadog') return { metrics: { cpu: 45, memory: 80 } };
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        if (tool === 'skill') return { ok: true };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const orchestrator = createOrchestrator(llm, toolExecutor, {
+        autoApproveRemediation: true,
+      });
+      const result = await orchestrator.investigate('Why is the API slow?');
+
+      expect(execute).toHaveBeenCalledWith(
+        'skill',
+        expect.objectContaining({
+          name: 'deploy-service',
+        })
+      );
+      expect(result.remediationPlan?.steps[0]?.status).toBe('completed');
+    });
+
+    it('should skip command-only remediation steps instead of calling unsupported tools', async () => {
+      let callIndex = 0;
+      const complete = vi.fn().mockImplementation(async () => {
+        callIndex++;
+        if (callIndex === 1) return mockTriageResponse;
+        if (callIndex === 2) return mockHypothesisResponse;
+        if (callIndex === 3) return mockEvidenceEvaluationConfirm;
+        if (callIndex === 4) return mockConclusionResponse;
+        if (callIndex === 5) return mockRemediationCommandOnlyResponse;
+        return mockEvidenceEvaluationPrune;
+      });
+      const llm: LLMClient = { complete };
+
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'cloudwatch_logs') return [{ message: 'Connection timeout after 30s' }];
+        if (tool === 'datadog') return { metrics: { cpu: 45, memory: 80 } };
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const orchestrator = createOrchestrator(llm, toolExecutor, {
+        autoApproveRemediation: true,
+      });
+      const result = await orchestrator.investigate('Why is the API slow?');
+
+      const invokedTools = execute.mock.calls.map((call) => call[0]);
+      expect(invokedTools).not.toContain('execute_command');
+      expect(invokedTools).not.toContain('invoke_skill');
+      expect(result.remediationPlan?.steps[0]?.status).toBe('skipped');
+      expect(result.remediationPlan?.steps[0]?.error).toContain(
+        'Direct command execution is disabled'
+      );
+    });
   });
 
   describe('options', () => {
@@ -349,18 +444,65 @@ describe('InvestigationOrchestrator', () => {
       const result = await orchestrator.investigate('Why is the API slow?');
       expect(result).toBeDefined();
     });
+
+    it('should include available skills and relevant runbooks in remediation prompt context', async () => {
+      let callIndex = 0;
+      const complete = vi.fn().mockImplementation(async () => {
+        callIndex++;
+        if (callIndex === 1) return mockTriageResponse;
+        if (callIndex === 2) return mockHypothesisResponse;
+        if (callIndex === 3) return mockEvidenceEvaluationConfirm;
+        if (callIndex === 4) return mockConclusionResponse;
+        if (callIndex === 5) return mockRemediationResponse;
+        return mockEvidenceEvaluationPrune;
+      });
+      const llm: LLMClient = { complete };
+      const fetchRelevantRunbooks = vi
+        .fn()
+        .mockResolvedValue(['DB Connection Recovery', 'API Latency Playbook']);
+
+      const orchestrator = createOrchestrator(llm, mockToolExecutor, {
+        incidentId: 'INC-456',
+        availableSkills: ['deploy-service', 'rollback-deployment'],
+        fetchRelevantRunbooks,
+      });
+
+      await orchestrator.investigate('Investigate incident');
+
+      expect(fetchRelevantRunbooks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          incidentId: 'INC-456',
+          affectedServices: ['api-gateway', 'user-service'],
+        })
+      );
+
+      const remediationPromptCall = complete.mock.calls.find(
+        (call) =>
+          typeof call[0] === 'string' &&
+          call[0].includes('Generate a remediation plan for the identified root cause')
+      );
+      expect(remediationPromptCall).toBeDefined();
+
+      const remediationPrompt = remediationPromptCall?.[0] as string;
+      expect(remediationPrompt).toContain('- deploy-service');
+      expect(remediationPrompt).toContain('- rollback-deployment');
+      expect(remediationPrompt).toContain('- DB Connection Recovery');
+      expect(remediationPrompt).toContain('- API Latency Playbook');
+    });
   });
 
   describe('log analysis', () => {
     it('should analyze logs for hypothesis', async () => {
       // Create a mock that returns log analysis response
       const logAnalysisLLM: LLMClient = {
-        complete: vi.fn().mockResolvedValue(JSON.stringify({
-          patterns: [],
-          anomalies: [],
-          summary: 'Connection issues detected',
-          suggestedHypotheses: ['Database connectivity issue'],
-        })),
+        complete: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            patterns: [],
+            anomalies: [],
+            summary: 'Connection issues detected',
+            suggestedHypotheses: ['Database connectivity issue'],
+          })
+        ),
       };
 
       const orchestrator = createOrchestrator(logAnalysisLLM, mockToolExecutor);
