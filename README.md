@@ -110,6 +110,21 @@ Search the knowledge base.
 runbook knowledge search "redis connection timeout"
 ```
 
+### `runbook knowledge auth google`
+
+Authenticate with Google Drive for knowledge sync.
+
+```bash
+# Set up OAuth credentials first
+export GOOGLE_CLIENT_ID=your-client-id
+export GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Run authentication flow
+runbook knowledge auth google
+```
+
+This opens a browser for Google OAuth consent and saves the refresh token to your config.
+
 ### `runbook slack-gateway`
 
 Start Slack mention/event handling for `@runbookAI` requests in alert channels.
@@ -165,12 +180,33 @@ knowledge:
     - type: filesystem
       path: .runbook/runbooks/
       watch: true
+
+    # Confluence Cloud/Server
+    - type: confluence
+      baseUrl: https://mycompany.atlassian.net
+      spaceKey: SRE
+      labels: [runbook, postmortem]
+      auth:
+        email: ${CONFLUENCE_EMAIL}
+        apiToken: ${CONFLUENCE_API_TOKEN}
+
+    # Google Drive (requires OAuth - run `runbook knowledge auth google`)
+    - type: google_drive
+      folderIds: ['your-folder-id']
+      clientId: ${GOOGLE_CLIENT_ID}
+      clientSecret: ${GOOGLE_CLIENT_SECRET}
+      refreshToken: ${GOOGLE_REFRESH_TOKEN}
+      includeSubfolders: true
 ```
 
 See [PLAN.md](./PLAN.md) for full configuration options.
 
 ## Recent Changes
 
+- **Knowledge Sources**: Added Confluence and Google Drive integrations for syncing runbooks and architecture docs
+  - Confluence: REST API v2 with label filtering, HTML→markdown conversion
+  - Google Drive: OAuth2 flow, Google Docs/Sheets export, incremental sync
+  - New command: `runbook knowledge auth google` for OAuth setup
 - Skill execution now runs real workflows via `SkillExecutor` through the `skill` tool.
 - CLI runtime now loads dynamic skills from registry and injects knowledge retrieval into agent runtime.
 - Main config schema now includes OpsGenie under `incident.opsgenie` with validation.

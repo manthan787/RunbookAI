@@ -184,6 +184,22 @@ Scratchpad: Full Audit Trail
   - [x] Markdown parsing with frontmatter
   - [x] YAML support
   - [ ] File watching for hot reload
+- [x] Implement source dispatcher (`src/knowledge/sources/index.ts`)
+  - [x] Unified loadFromSource entry point
+  - [x] Routes to filesystem, confluence, or google_drive loaders
+- [x] Implement Confluence source (`src/knowledge/sources/confluence.ts`)
+  - [x] REST API v2 (with v1 fallback)
+  - [x] Label filtering for runbooks/postmortems
+  - [x] HTML to markdown conversion
+  - [x] Incremental sync via lastSyncTime
+  - [x] Metadata extraction from labels
+- [x] Implement Google Drive source (`src/knowledge/sources/google-drive.ts`)
+  - [x] OAuth2 authentication flow (`google-auth.ts`)
+  - [x] Google Docs export to plain text
+  - [x] Google Sheets export to markdown tables
+  - [x] Subfolder traversal
+  - [x] Incremental sync via modifiedTime
+  - [x] Metadata from file properties
 - [x] Implement chunker (in `src/knowledge/sources/filesystem.ts`)
   - [x] Markdown-aware chunking by sections
   - [x] Section title preservation
@@ -262,6 +278,7 @@ Scratchpad: Full Audit Trail
   - [x] `runbook knowledge add <file>` - Add local knowledge
   - [x] `runbook knowledge validate` - Check for stale content
   - [x] `runbook knowledge stats` - Show knowledge base statistics
+  - [x] `runbook knowledge auth google` - OAuth2 flow for Google Drive
 - [x] Implement config commands
   - [x] `runbook init` - Interactive setup wizard with step-by-step configuration
   - [x] `runbook config` - Show current configuration
