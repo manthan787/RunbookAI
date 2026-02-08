@@ -38,7 +38,19 @@ const AWSConfigSchema = z.object({
   profile: z.string().optional(),
 });
 
+const KubernetesConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  context: z.string().optional(),
+  namespace: z.string().optional(),
+  kubeconfig: z.string().optional(),
+});
+
 const PagerDutyConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  apiKey: z.string().optional(),
+});
+
+const OpsGenieConfigSchema = z.object({
   enabled: z.boolean().default(false),
   apiKey: z.string().optional(),
 });
@@ -50,6 +62,7 @@ const SlackConfigSchema = z.object({
 
 const IncidentConfigSchema = z.object({
   pagerduty: PagerDutyConfigSchema.default({}),
+  opsgenie: OpsGenieConfigSchema.default({}),
   slack: SlackConfigSchema.default({}),
 });
 
@@ -103,6 +116,7 @@ const ConfigSchema = z.object({
   providers: z
     .object({
       aws: AWSConfigSchema.default({}),
+      kubernetes: KubernetesConfigSchema.default({}),
     })
     .default({}),
   incident: IncidentConfigSchema.default({}),
@@ -226,6 +240,11 @@ export function validateConfig(config: Config): string[] {
   // Check PagerDuty if enabled
   if (config.incident.pagerduty.enabled && !config.incident.pagerduty.apiKey) {
     errors.push('PagerDuty enabled but no API key configured.');
+  }
+
+  // Check OpsGenie if enabled
+  if (config.incident.opsgenie.enabled && !config.incident.opsgenie.apiKey) {
+    errors.push('OpsGenie enabled but no API key configured.');
   }
 
   return errors;

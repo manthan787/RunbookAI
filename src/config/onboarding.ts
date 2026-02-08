@@ -34,6 +34,7 @@ export interface OnboardingAnswers {
 
   // Observability
   useCloudWatch: boolean;
+  useKubernetes: boolean;
   logGroups?: string[];
 
   // Incidents
@@ -97,7 +98,8 @@ export function generateConfig(answers: OnboardingAnswers): ServiceConfig {
 export async function saveConfig(
   config: ServiceConfig,
   configDir: string = '.runbook',
-  llmConfig?: { provider: string; apiKey?: string }
+  llmConfig?: { provider: string; apiKey?: string },
+  options?: { enableKubernetes?: boolean }
 ): Promise<string> {
   // Ensure directory exists
   if (!existsSync(configDir)) {
@@ -121,6 +123,8 @@ export async function saveConfig(
 
   // Get regions from the service config
   const regions = config.aws.accounts?.[0]?.regions || ['us-east-1'];
+  const hasEksService = config.compute.some((service) => service.type === 'eks' && service.enabled);
+  const kubernetesEnabled = options?.enableKubernetes ?? hasEksService;
 
   // Use camelCase to match the config schema
   const mainConfig: Record<string, unknown> = {
@@ -136,6 +140,9 @@ export async function saveConfig(
       aws: {
         enabled: true,
         regions: regions,
+      },
+      kubernetes: {
+        enabled: kubernetesEnabled,
       },
     },
     agent: {
@@ -273,6 +280,14 @@ This wizard will help you set up:
     options: [
       { value: true, label: 'Yes', description: 'Enable CloudWatch integration' },
       { value: false, label: 'No', description: 'Skip CloudWatch' },
+    ],
+  },
+
+  kubernetes: {
+    question: 'Is Kubernetes part of your production stack?',
+    options: [
+      { value: true, label: 'Yes', description: 'Enable Kubernetes tools in agent runtime' },
+      { value: false, label: 'No', description: 'Do not load Kubernetes tools' },
     ],
   },
 

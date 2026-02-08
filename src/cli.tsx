@@ -20,9 +20,64 @@ import { SetupWizard } from './cli/setup-wizard';
 import { ChatInterface } from './cli/chat';
 import { createRetriever } from './knowledge/retriever';
 import type { AgentEvent } from './agent/types';
+import { skillRegistry } from './skills/registry';
+import { getRuntimeTools } from './cli/runtime-tools';
 
 // Version from package.json
 const VERSION = '0.1.0';
+
+/**
+ * Knowledge retriever adapter for Agent runtime.
+ */
+function createAgentKnowledgeRetriever() {
+  const retriever = createRetriever();
+
+  return {
+    retrieve: async (context: {
+      incidentId?: string;
+      services: string[];
+      symptoms: string[];
+      errorMessages: string[];
+    }) => {
+      const queryParts = [
+        context.incidentId,
+        ...context.services,
+        ...context.symptoms,
+        ...context.errorMessages,
+      ].filter(Boolean) as string[];
+
+      const query = queryParts.join(' ').trim() || 'production incident investigation runbook';
+      return retriever.search(query, {
+        limit: 20,
+        serviceFilter: context.services.length > 0 ? context.services : undefined,
+      });
+    },
+  };
+}
+
+async function createRuntimeAgent(config: Awaited<ReturnType<typeof loadConfig>>): Promise<Agent> {
+  const llm = createLLMClient({
+    provider: config.llm.provider,
+    model: config.llm.model,
+    apiKey: config.llm.apiKey,
+  });
+
+  await skillRegistry.loadUserSkills();
+  const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
+  const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+
+  return new Agent({
+    llm,
+    tools: runtimeTools,
+    skills: runtimeSkills,
+    knowledgeRetriever: createAgentKnowledgeRetriever(),
+    config: {
+      maxIterations: config.agent.maxIterations,
+      maxHypothesisDepth: config.agent.maxHypothesisDepth,
+      contextThresholdTokens: config.agent.contextThresholdTokens,
+    },
+  });
+}
 
 /**
  * CLI Component for agent interaction
@@ -56,22 +111,7 @@ function AgentUI({ query, incidentId, verbose }: AgentUIProps) {
       }
 
       // Create agent
-      const llm = createLLMClient({
-        provider: config.llm.provider,
-        model: config.llm.model,
-        apiKey: config.llm.apiKey,
-      });
-
-      const agent = new Agent({
-        llm,
-        tools: toolRegistry.getAll(),
-        skills: ['investigate-incident', 'deploy-service', 'scale-service'],
-        config: {
-          maxIterations: config.agent.maxIterations,
-          maxHypothesisDepth: config.agent.maxHypothesisDepth,
-          contextThresholdTokens: config.agent.contextThresholdTokens,
-        },
-      });
+      const agent = await createRuntimeAgent(config);
 
       // Run agent and process events
       for await (const event of agent.run(query, incidentId)) {
@@ -184,17 +224,7 @@ async function runSimple(query: string, incidentId?: string) {
       process.exit(1);
     }
 
-    const llm = createLLMClient({
-      provider: config.llm.provider,
-      model: config.llm.model,
-      apiKey: config.llm.apiKey,
-    });
-
-    const agent = new Agent({
-      llm,
-      tools: toolRegistry.getAll(),
-      skills: ['investigate-incident', 'deploy-service', 'scale-service'],
-    });
+    const agent = await createRuntimeAgent(config);
 
     for await (const event of agent.run(query, incidentId)) {
       switch (event.type) {

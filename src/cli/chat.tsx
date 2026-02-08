@@ -14,6 +14,9 @@ import { toolRegistry } from '../tools/registry';
 import { loadConfig, validateConfig } from '../utils/config';
 import type { AgentEvent } from '../agent/types';
 import { MarkdownText } from './components/markdown';
+import { skillRegistry } from '../skills/registry';
+import { getRuntimeTools } from './runtime-tools';
+import { createRetriever } from '../knowledge/retriever';
 
 const LOGO = `
   ____              _                 _       _    ___
@@ -30,6 +33,7 @@ interface LoadedConfig {
   llmModel: string;
   awsRegions: string[];
   awsDefaultRegion: string;
+  kubernetesEnabled: boolean;
 }
 
 interface Message {
@@ -82,10 +86,31 @@ export function ChatInterface() {
         apiKey: config.llm.apiKey,
       });
 
+      await skillRegistry.loadUserSkills();
+      const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
+      const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+      const retriever = createRetriever();
+
       const newAgent = new Agent({
         llm,
-        tools: toolRegistry.getAll(),
-        skills: ['investigate-incident', 'deploy-service', 'scale-service'],
+        tools: runtimeTools,
+        skills: runtimeSkills,
+        knowledgeRetriever: {
+          retrieve: async (context) => {
+            const queryParts = [
+              context.incidentId,
+              ...context.services,
+              ...context.symptoms,
+              ...context.errorMessages,
+            ].filter(Boolean) as string[];
+
+            const query = queryParts.join(' ').trim() || 'production incident investigation runbook';
+            return retriever.search(query, {
+              limit: 20,
+              serviceFilter: context.services.length > 0 ? context.services : undefined,
+            });
+          },
+        },
         config: {
           maxIterations: config.agent.maxIterations,
           maxHypothesisDepth: config.agent.maxHypothesisDepth,
@@ -110,6 +135,7 @@ export function ChatInterface() {
             llmModel: config.llm.model,
             awsRegions,
             awsDefaultRegion,
+            kubernetesEnabled: config.providers.kubernetes.enabled,
           },
         },
         {
@@ -319,6 +345,13 @@ Example queries:
                     {message.config.awsRegions.length > 1 && (
                       <Text color="gray"> (+{message.config.awsRegions.length - 1} more)</Text>
                     )}
+                  </Box>
+                  <Box>
+                    <Text color="gray">│ </Text>
+                    <Text color="gray">Kubernetes:  </Text>
+                    <Text color={message.config.kubernetesEnabled ? 'green' : 'yellow'}>
+                      {message.config.kubernetesEnabled ? 'enabled' : 'disabled'}
+                    </Text>
                   </Box>
                   <Box>
                     <Text color="gray">└─────────────────────────────────────────</Text>

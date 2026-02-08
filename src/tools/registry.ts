@@ -56,6 +56,7 @@ import {
   type MutationRequest,
 } from '../agent/approval';
 import { loadConfig } from '../utils/config';
+import { createKubernetesClient } from '../providers/kubernetes/client';
 
 // Cached config for getting default regions
 let cachedDefaultRegion: string | null = null;
@@ -840,8 +841,14 @@ export const skillTool = defineTool(
   },
   async (args) => {
     const { skillRegistry } = await import('../skills/registry');
+    const { SkillExecutor } = await import('../skills/executor');
+    const { createLLMClient } = await import('../model/llm');
     const skillName = args.name as string;
     const skillArgs = (args.args as Record<string, unknown>) || {};
+    const config = await loadConfig();
+
+    // Load user skills so runtime reflects .runbook/skills.
+    await skillRegistry.loadUserSkills();
 
     // List skills
     if (skillName === 'list') {
@@ -885,23 +892,56 @@ export const skillTool = defineTool(
       };
     }
 
-    // Return skill info for agent to execute steps
+    const llm = createLLMClient({
+      provider: config.llm.provider,
+      model: config.llm.model,
+      apiKey: config.llm.apiKey,
+    });
+
+    const executor = new SkillExecutor({
+      llm,
+      onApprovalRequired: async (step) => {
+        const riskLevel = skill.riskLevel || classifyRisk(step.action, skill.id);
+        const request: MutationRequest = {
+          id: generateMutationId(),
+          operation: step.action,
+          resource: skill.id,
+          description: `${skill.name}: ${step.name}`,
+          riskLevel,
+          parameters: step.parameters || {},
+          estimatedImpact: step.description,
+        };
+
+        const approval = await requestApproval(request);
+        return approval.approved;
+      },
+    });
+
+    const execution = await executor.execute(skill, { ...skillArgs });
+
     return {
       skill: {
         id: skill.id,
         name: skill.name,
         description: skill.description,
-        riskLevel: skill.riskLevel,
-        steps: skill.steps.map((s) => ({
-          id: s.id,
-          name: s.name,
-          description: s.description,
-          action: s.action,
-          requiresApproval: s.requiresApproval,
-        })),
+        riskLevel: skill.riskLevel || 'medium',
       },
-      parameters: skillArgs,
-      message: `Skill "${skill.name}" loaded with ${skill.steps.length} steps. Execute each step in sequence.`,
+      parameters: execution.parameters,
+      execution: {
+        status: execution.status,
+        startedAt: execution.startedAt.toISOString(),
+        completedAt: execution.completedAt.toISOString(),
+        durationMs: execution.durationMs,
+        steps: execution.stepResults.map((stepResult) => ({
+          stepId: stepResult.stepId,
+          status: stepResult.status,
+          durationMs: stepResult.durationMs,
+          error: stepResult.error,
+          result: stepResult.result,
+        })),
+        error: execution.error,
+      },
+      message: `Skill "${skill.name}" execution ${execution.status}.`,
     };
   }
 );
@@ -1269,6 +1309,175 @@ export const awsCliTool = defineTool(
   }
 );
 
+/**
+ * Kubernetes Query Tool - read-only Kubernetes cluster operations
+ */
+export const kubernetesQueryTool = defineTool(
+  'kubernetes_query',
+  `Query Kubernetes cluster state (read-only).
+
+   Use for:
+   - Cluster availability and context inspection
+   - Listing pods, deployments, nodes, namespaces, and events
+   - Resource usage with top pods/nodes
+
+   This tool is read-only in this phase.`,
+  {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'Kubernetes query action to perform',
+        enum: [
+          'status',
+          'contexts',
+          'namespaces',
+          'pods',
+          'deployments',
+          'nodes',
+          'events',
+          'top_pods',
+          'top_nodes',
+        ],
+      },
+      context: {
+        type: 'string',
+        description: 'Optional kube context to query',
+      },
+      namespace: {
+        type: 'string',
+        description: 'Optional namespace for namespaced resources',
+      },
+      label_selector: {
+        type: 'string',
+        description: 'Optional label selector for pods query',
+      },
+      limit: {
+        type: 'number',
+        description: 'Max number of items to return (default: 50)',
+      },
+    },
+    required: ['action'],
+  },
+  async (args) => {
+    const action = args.action as string;
+    const namespace = args.namespace as string | undefined;
+    const context = args.context as string | undefined;
+    const labelSelector = args.label_selector as string | undefined;
+    const limit = (args.limit as number) || 50;
+
+    const client = createKubernetesClient({ context, namespace });
+
+    try {
+      switch (action) {
+        case 'status': {
+          const [available, currentContext, clusterInfo] = await Promise.all([
+            client.isAvailable(),
+            client.getCurrentContext(),
+            client.getClusterInfo(),
+          ]);
+
+          return {
+            available,
+            currentContext,
+            clusterInfo,
+          };
+        }
+
+        case 'contexts': {
+          const [currentContext, contexts] = await Promise.all([
+            client.getCurrentContext(),
+            client.listContexts(),
+          ]);
+
+          return {
+            currentContext,
+            contexts,
+            count: contexts.length,
+          };
+        }
+
+        case 'namespaces': {
+          const namespaces = await client.listNamespaces();
+          return {
+            namespaces: namespaces.slice(0, limit),
+            count: namespaces.length,
+            limited: namespaces.length > limit,
+          };
+        }
+
+        case 'pods': {
+          const pods = await client.getPods(namespace, labelSelector);
+          return {
+            pods: pods.slice(0, limit),
+            count: pods.length,
+            namespace: namespace || 'all',
+            limited: pods.length > limit,
+          };
+        }
+
+        case 'deployments': {
+          const deployments = await client.getDeployments(namespace);
+          return {
+            deployments: deployments.slice(0, limit),
+            count: deployments.length,
+            namespace: namespace || 'all',
+            limited: deployments.length > limit,
+          };
+        }
+
+        case 'nodes': {
+          const nodes = await client.getNodes();
+          return {
+            nodes: nodes.slice(0, limit),
+            count: nodes.length,
+            limited: nodes.length > limit,
+          };
+        }
+
+        case 'events': {
+          const events = await client.getEvents(namespace);
+          return {
+            events: events.slice(-limit),
+            count: events.length,
+            namespace: namespace || 'all',
+            limited: events.length > limit,
+          };
+        }
+
+        case 'top_pods': {
+          const topPods = await client.getTopPods(namespace);
+          return {
+            topPods: topPods.slice(0, limit),
+            count: topPods.length,
+            namespace: namespace || 'all',
+            limited: topPods.length > limit,
+          };
+        }
+
+        case 'top_nodes': {
+          const topNodes = await client.getTopNodes();
+          return {
+            topNodes: topNodes.slice(0, limit),
+            count: topNodes.length,
+            limited: topNodes.length > limit,
+          };
+        }
+
+        default:
+          return {
+            error: `Unsupported kubernetes action: ${action}`,
+          };
+      }
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown Kubernetes query error',
+        hint: 'Ensure kubectl is installed and kube context/credentials are configured.',
+      };
+    }
+  }
+);
+
 // Register default tools
 toolRegistry.registerCategory('aws', 'AWS Cloud Operations', [
   awsQueryTool,
@@ -1276,6 +1485,10 @@ toolRegistry.registerCategory('aws', 'AWS Cloud Operations', [
   awsCliTool,
   cloudwatchAlarmsTool,
   cloudwatchLogsTool,
+]);
+
+toolRegistry.registerCategory('kubernetes', 'Kubernetes Cluster Operations', [
+  kubernetesQueryTool,
 ]);
 
 /**

@@ -11,11 +11,15 @@ import {
   ONBOARDING_PROMPTS,
   generateConfig,
   saveConfig,
+  loadServiceConfig,
   type OnboardingAnswers,
 } from '../config/onboarding';
 import type { AWSAccount } from '../config/services';
+import { loadConfig } from '../utils/config';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-type Step = 'welcome' | 'llm_provider' | 'llm_key' | 'account' | 'regions' | 'compute' | 'database' | 'observability' | 'incident' | 'saving' | 'done';
+type Step = 'welcome' | 'llm_provider' | 'llm_key' | 'account' | 'regions' | 'compute' | 'database' | 'observability' | 'kubernetes' | 'incident' | 'saving' | 'done';
 
 interface SelectOption {
   value: string;
@@ -126,6 +130,8 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
   const [step, setStep] = useState<Step>('welcome');
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(true);
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
 
   // Answers
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('anthropic');
@@ -135,13 +141,129 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
   const [computeServices, setComputeServices] = useState<string[]>([]);
   const [databaseServices, setDatabaseServices] = useState<string[]>([]);
   const [useCloudWatch, setUseCloudWatch] = useState(true);
+  const [useKubernetes, setUseKubernetes] = useState(false);
   const [incidentProvider, setIncidentProvider] = useState<'pagerduty' | 'opsgenie' | 'none'>('none');
+
+  const getDefaultFocusForStep = (targetStep: Step): number => {
+    switch (targetStep) {
+      case 'llm_provider':
+        return llmProvider === 'anthropic' ? 0 : llmProvider === 'openai' ? 1 : 2;
+      case 'account':
+        return accountSetup === 'single' ? 0 : accountSetup === 'multi' ? 1 : 2;
+      case 'observability':
+        return useCloudWatch ? 0 : 1;
+      case 'kubernetes':
+        return useKubernetes ? 0 : 1;
+      case 'incident':
+        return incidentProvider === 'pagerduty' ? 0 : incidentProvider === 'opsgenie' ? 1 : 2;
+      default:
+        return 0;
+    }
+  };
+
+  const goToStep = (nextStep: Step) => {
+    setStep(nextStep);
+    setFocusedIndex(getDefaultFocusForStep(nextStep));
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const hydrateFromExistingProfile = async () => {
+      try {
+        const hasMainConfigFile =
+          existsSync(join(configDir, 'config.yaml')) ||
+          existsSync(join(configDir, 'config.yml'));
+        const hasServicesConfigFile = existsSync(join(configDir, 'services.yaml'));
+
+        if (!hasMainConfigFile && !hasServicesConfigFile) {
+          setIsLoadingExisting(false);
+          return;
+        }
+
+        const mainConfigPath = existsSync(join(configDir, 'config.yaml'))
+          ? join(configDir, 'config.yaml')
+          : join(configDir, 'config.yml');
+
+        const [mainConfig, serviceConfig] = await Promise.all([
+          loadConfig(hasMainConfigFile ? mainConfigPath : undefined),
+          loadServiceConfig(configDir),
+        ]);
+
+        if (!mounted) return;
+
+        setHasExistingProfile(true);
+
+        // LLM
+        if (mainConfig.llm.provider === 'anthropic' || mainConfig.llm.provider === 'openai' || mainConfig.llm.provider === 'ollama') {
+          setLlmProvider(mainConfig.llm.provider);
+        }
+        if (mainConfig.llm.apiKey) {
+          setLlmApiKey(mainConfig.llm.apiKey);
+        }
+
+        // Main provider config
+        if (mainConfig.providers.aws.regions.length > 0) {
+          setRegions(mainConfig.providers.aws.regions.join(','));
+        }
+        setUseKubernetes(mainConfig.providers.kubernetes.enabled);
+
+        // Service profile config
+        if (serviceConfig) {
+          if (serviceConfig.aws.accounts.length === 0) {
+            setAccountSetup('skip');
+          } else if (serviceConfig.aws.accounts.length === 1) {
+            setAccountSetup('single');
+          } else {
+            setAccountSetup('multi');
+          }
+
+          const compute = serviceConfig.compute
+            .filter((service) => service.enabled)
+            .map((service) => service.type)
+            .filter((type) =>
+              ['ecs', 'ec2', 'lambda', 'eks', 'fargate', 'apprunner', 'amplify'].includes(type)
+            );
+          setComputeServices(compute);
+
+          const databases = serviceConfig.databases
+            .filter((service) => service.enabled)
+            .map((service) => service.type)
+            .filter((type) =>
+              ['rds', 'dynamodb', 'elasticache', 'documentdb', 'aurora'].includes(type)
+            );
+          setDatabaseServices(databases);
+
+          setUseCloudWatch(serviceConfig.observability.cloudwatch.enabled);
+
+          if (serviceConfig.incidents.pagerduty.enabled) {
+            setIncidentProvider('pagerduty');
+          } else if (serviceConfig.incidents.opsgenie.enabled) {
+            setIncidentProvider('opsgenie');
+          } else {
+            setIncidentProvider('none');
+          }
+        }
+      } catch {
+        // If loading existing settings fails, continue with defaults.
+      } finally {
+        if (mounted) {
+          setIsLoadingExisting(false);
+        }
+      }
+    };
+
+    hydrateFromExistingProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [configDir]);
 
   // Navigation
   useInput((input, key) => {
     if (step === 'welcome' && key.return) {
-      setStep('llm_provider');
-      setFocusedIndex(0);
+      goToStep('llm_provider');
       return;
     }
 
@@ -169,6 +291,8 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
         return ONBOARDING_PROMPTS.databaseServices.options.length - 1;
       case 'observability':
         return 1;
+      case 'kubernetes':
+        return 1;
       case 'incident':
         return ONBOARDING_PROMPTS.incidentProvider.options.length - 1;
       default:
@@ -190,6 +314,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
         computeServices: computeServices.length > 0 ? computeServices as OnboardingAnswers['computeServices'] : ['none'],
         databaseServices: databaseServices.length > 0 ? databaseServices as OnboardingAnswers['databaseServices'] : ['none'],
         useCloudWatch,
+        useKubernetes,
         incidentProvider,
         llmProvider,
         llmApiKey: llmProvider !== 'ollama' ? llmApiKey : undefined,
@@ -199,6 +324,8 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       await saveConfig(config, configDir, {
         provider: llmProvider,
         apiKey: llmApiKey || undefined,
+      }, {
+        enableKubernetes: useKubernetes,
       });
       setStep('done');
     } catch (err) {
@@ -207,6 +334,17 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
   }
 
   // Render based on step
+  if (isLoadingExisting) {
+    return (
+      <Box>
+        <Text color="cyan">
+          <Spinner type="dots" />
+        </Text>
+        <Text> Loading existing profile...</Text>
+      </Box>
+    );
+  }
+
   switch (step) {
     case 'welcome':
       return (
@@ -221,6 +359,11 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
             ═══════════════════════════════════════════
           </Text>
           <Text>{ONBOARDING_PROMPTS.welcome}</Text>
+          {hasExistingProfile && (
+            <Box marginTop={1}>
+              <Text color="yellow">Existing profile found. Press Enter on each step to keep current values.</Text>
+            </Box>
+          )}
           <Box marginTop={1}>
             <Text color="green">Press Enter to continue...</Text>
           </Box>
@@ -231,6 +374,9 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       return (
         <Box flexDirection="column">
           <Text bold color="yellow">Step 1: Choose your AI provider</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {llmProvider}</Text>
+          )}
           <Box marginTop={1}>
             <SingleSelect
               options={[
@@ -243,11 +389,10 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 setLlmProvider(value as 'anthropic' | 'openai' | 'ollama');
                 if (value === 'ollama') {
                   // Skip API key for Ollama
-                  setStep('account');
+                  goToStep('account');
                 } else {
-                  setStep('llm_key');
+                  goToStep('llm_key');
                 }
-                setFocusedIndex(0);
               }}
             />
           </Box>
@@ -258,6 +403,9 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       return (
         <Box flexDirection="column">
           <Text bold color="yellow">Step 2: Enter your API key</Text>
+          {hasExistingProfile && llmApiKey && (
+            <Text color="gray">Current key is set. Press Enter to keep it.</Text>
+          )}
           <Box marginTop={1} flexDirection="column">
             <Text color="gray">
               {llmProvider === 'anthropic'
@@ -271,8 +419,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 onChange={setLlmApiKey}
                 onSubmit={() => {
                   if (llmApiKey.trim()) {
-                    setStep('account');
-                    setFocusedIndex(0);
+                    goToStep('account');
                   }
                 }}
               />
@@ -290,14 +437,16 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       return (
         <Box flexDirection="column">
           <Text bold color="yellow">Step 3: {ONBOARDING_PROMPTS.accountSetup.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {accountSetup}</Text>
+          )}
           <Box marginTop={1}>
             <SingleSelect
               options={ONBOARDING_PROMPTS.accountSetup.options}
               focusedIndex={focusedIndex}
               onSelect={(value) => {
                 setAccountSetup(value as 'single' | 'multi' | 'skip');
-                setStep('regions');
-                setFocusedIndex(0);
+                goToStep('regions');
               }}
             />
           </Box>
@@ -308,14 +457,16 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       return (
         <Box flexDirection="column">
           <Text bold color="yellow">Step 4: AWS Regions</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {regions}</Text>
+          )}
           <Box marginTop={1}>
             <TextInput
               prompt="Enter AWS regions (comma-separated, e.g., us-east-1,us-west-2):"
               value={regions}
               onChange={setRegions}
               onSubmit={() => {
-                setStep('compute');
-                setFocusedIndex(0);
+                goToStep('compute');
               }}
             />
           </Box>
@@ -337,8 +488,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 );
               }}
               onSubmit={() => {
-                setStep('database');
-                setFocusedIndex(0);
+                goToStep('database');
               }}
             />
           </Box>
@@ -360,8 +510,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 );
               }}
               onSubmit={() => {
-                setStep('observability');
-                setFocusedIndex(0);
+                goToStep('observability');
               }}
             />
           </Box>
@@ -372,6 +521,9 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
       return (
         <Box flexDirection="column">
           <Text bold color="yellow">Step 7: {ONBOARDING_PROMPTS.observability.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {useCloudWatch ? 'Yes' : 'No'}</Text>
+          )}
           <Box marginTop={1}>
             <SingleSelect
               options={ONBOARDING_PROMPTS.observability.options.map((o) => ({
@@ -382,8 +534,31 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
               focusedIndex={focusedIndex}
               onSelect={(value) => {
                 setUseCloudWatch(value === 'true');
-                setStep('incident');
-                setFocusedIndex(0);
+                goToStep('kubernetes');
+              }}
+            />
+          </Box>
+        </Box>
+      );
+
+    case 'kubernetes':
+      return (
+        <Box flexDirection="column">
+          <Text bold color="yellow">Step 8: {ONBOARDING_PROMPTS.kubernetes.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {useKubernetes ? 'Yes' : 'No'}</Text>
+          )}
+          <Box marginTop={1}>
+            <SingleSelect
+              options={ONBOARDING_PROMPTS.kubernetes.options.map((o) => ({
+                value: String(o.value),
+                label: o.label,
+                description: o.description,
+              }))}
+              focusedIndex={focusedIndex}
+              onSelect={(value) => {
+                setUseKubernetes(value === 'true');
+                goToStep('incident');
               }}
             />
           </Box>
@@ -393,7 +568,10 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
     case 'incident':
       return (
         <Box flexDirection="column">
-          <Text bold color="yellow">Step 8: {ONBOARDING_PROMPTS.incidentProvider.question}</Text>
+          <Text bold color="yellow">Step 9: {ONBOARDING_PROMPTS.incidentProvider.question}</Text>
+          {hasExistingProfile && (
+            <Text color="gray">Current: {incidentProvider}</Text>
+          )}
           <Box marginTop={1}>
             <SingleSelect
               options={ONBOARDING_PROMPTS.incidentProvider.options}
@@ -442,6 +620,7 @@ export function SetupWizard({ configDir = '.runbook' }: SetupWizardProps) {
                 <Text>• Compute: {computeServices.length > 0 ? computeServices.join(', ') : 'none'}</Text>
                 <Text>• Databases: {databaseServices.length > 0 ? databaseServices.join(', ') : 'none'}</Text>
                 <Text>• CloudWatch: {useCloudWatch ? 'enabled' : 'disabled'}</Text>
+                <Text>• Kubernetes tools: {useKubernetes ? 'enabled' : 'disabled'}</Text>
                 <Text>• Incidents: {incidentProvider}</Text>
               </Box>
             </>
