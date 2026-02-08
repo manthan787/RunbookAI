@@ -91,6 +91,16 @@ ${toolDescriptions}
 aws ce get-cost-and-usage --time-period Start=$(date -d '6 months ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) --granularity MONTHLY --metrics "BlendedCost" --region us-east-1
 \`\`\`
 
+**For investigating cost spikes (why did cost go up?):**
+1. First get cost breakdown BY SERVICE to identify which service caused the spike:
+\`\`\`
+aws ce get-cost-and-usage --time-period Start=2026-01-01,End=2026-02-01 --granularity MONTHLY --metrics "BlendedCost" --group-by Type=DIMENSION,Key=SERVICE --region us-east-1
+\`\`\`
+2. Compare to previous month to see the delta
+3. For the top cost-increasing service, investigate what resources were created/scaled
+4. Check for new EC2 instances, RDS databases, or other resources in that timeframe
+5. NEVER just guess at causes - always query data to find the actual reason
+
 When investigating:
 1. Start with observability tools to understand symptoms
 2. Query infrastructure state to correlate with symptoms
