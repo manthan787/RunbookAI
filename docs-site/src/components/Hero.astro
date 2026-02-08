@@ -1,0 +1,378 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Hero.astro';
+
+const isHomePage = Astro.props.slug === '';
+---
+
+{isHomePage ? (
+  <div class="hero-wrapper">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-icon">&#x1F680;</span>
+        <span>AI-Powered SRE Assistant</span>
+      </div>
+      <h1 class="hero-title">
+        <span class="gradient-text">Runbook</span>
+      </h1>
+      <p class="hero-tagline">
+        Investigate incidents, execute operational workflows, and manage cloud infrastructure using hypothesis-driven AI that thinks like your best SRE.
+      </p>
+      <div class="hero-actions">
+        <a href="/runbook/getting-started/quickstart/" class="hero-btn primary">
+          <span>Get Started</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        <a href="https://github.com/manthanthakar/runbook" class="hero-btn secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          <span>View on GitHub</span>
+        </a>
+      </div>
+      <div class="hero-features">
+        <div class="feature">
+          <div class="feature-icon">&#x1F50D;</div>
+          <span>Hypothesis-Driven Investigation</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#x2601;</div>
+          <span>AWS, K8s, & More</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#x1F4DA;</div>
+          <span>Knowledge Integration</span>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#x1F512;</div>
+          <span>Safety-First Approvals</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-terminal">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <span class="terminal-title">Terminal</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line">
+          <span class="prompt">$</span>
+          <span class="command">runbook investigate PD-12345</span>
+        </div>
+        <div class="terminal-line output">
+          <span class="status success">&#x2713;</span> Gathering incident context...
+        </div>
+        <div class="terminal-line output">
+          <span class="status success">&#x2713;</span> Searching knowledge base...
+        </div>
+        <div class="terminal-line output">
+          <span class="label">Forming hypotheses:</span>
+        </div>
+        <div class="terminal-line hypothesis">
+          H1: Database connection exhaustion
+        </div>
+        <div class="terminal-line hypothesis">
+          H2: Recent deployment caused leak
+        </div>
+        <div class="terminal-line output">
+          <span class="status success">&#x2713;</span> Testing H1: Traffic spike...
+        </div>
+        <div class="terminal-line output evidence">
+          Evidence: <span class="strong">STRONG</span> - Request rate 3x normal
+        </div>
+        <div class="terminal-line conclusion">
+          <span class="label root-cause">ROOT CAUSE:</span> Database connection exhaustion
+        </div>
+        <div class="terminal-line conclusion">
+          <span class="label confidence">Confidence:</span> <span class="high">HIGH</span>
+        </div>
+      </div>
+    </div>
+  </div>
+) : (
+  <Default {...Astro.props} />
+)}
+
+<style>
+  .hero-wrapper {
+    position: relative;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 800px;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: #a5b4fc;
+    margin-bottom: 1.5rem;
+  }
+
+  .badge-icon {
+    font-size: 1rem;
+  }
+
+  .hero-title {
+    font-size: clamp(3rem, 10vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 1rem;
+    line-height: 1.1;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-tagline {
+    font-size: 1.25rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0 0 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+
+  .hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .hero-btn.primary {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  }
+
+  .hero-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+  }
+
+  .hero-btn.secondary {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+  }
+
+  .hero-btn.secondary:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.5);
+  }
+
+  .hero-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+  }
+
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .feature-icon {
+    font-size: 1.25rem;
+  }
+
+  .hero-terminal {
+    position: relative;
+    z-index: 1;
+    margin-top: 4rem;
+    width: 100%;
+    max-width: 650px;
+    background: #0f0f1a;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 60px rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 30, 50, 0.8);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  }
+
+  .terminal-dots {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .dot.red { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green { background: #28c840; }
+
+  .terminal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-right: 44px;
+  }
+
+  .terminal-body {
+    padding: 1.25rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.8;
+  }
+
+  .terminal-line {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  .prompt {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .command {
+    color: #e2e8f0;
+  }
+
+  .output {
+    color: #94a3b8;
+    padding-left: 1rem;
+  }
+
+  .status {
+    margin-right: 0.25rem;
+  }
+
+  .status.success {
+    color: #10b981;
+  }
+
+  .hypothesis {
+    color: #a5b4fc;
+    padding-left: 2rem;
+  }
+
+  .evidence {
+    margin-top: 0.25rem;
+  }
+
+  .evidence .strong {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .conclusion {
+    margin-top: 0.5rem;
+  }
+
+  .label {
+    color: #64748b;
+  }
+
+  .label.root-cause {
+    color: #f59e0b;
+    font-weight: 600;
+  }
+
+  .label.confidence {
+    color: #64748b;
+  }
+
+  .high {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    .hero-wrapper {
+      padding: 2rem 1rem;
+      min-height: auto;
+    }
+
+    .hero-tagline {
+      font-size: 1rem;
+    }
+
+    .hero-terminal {
+      margin-top: 2rem;
+    }
+
+    .terminal-body {
+      font-size: 0.75rem;
+      padding: 1rem;
+    }
+
+    .hero-features {
+      gap: 1rem;
+    }
+
+    .feature {
+      font-size: 0.8rem;
+    }
+  }
+</style>
