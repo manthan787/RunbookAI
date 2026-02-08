@@ -112,11 +112,12 @@ export async function saveConfig(
   // Also save main config.yaml with LLM settings if provided
   if (llmConfig) {
     const mainConfigPath = join(configDir, 'config.yaml');
+    // Use models supported by pi-ai
     const llmModel = llmConfig.provider === 'anthropic'
       ? 'claude-sonnet-4-20250514'
       : llmConfig.provider === 'openai'
-        ? 'gpt-4-turbo-preview'
-        : 'llama3';
+        ? 'gpt-4o'
+        : 'llama3.1';
 
     // Use camelCase to match the config schema
     const mainConfig = {

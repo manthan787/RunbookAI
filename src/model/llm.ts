@@ -73,6 +73,14 @@ class PiAIClient implements LLMClient {
     // Get model from pi-ai
     // The getModel function is type-safe and provides autocomplete
     this.model = getModel(config.provider as 'openai', config.model as 'gpt-4o');
+
+    // Validate that the model was found
+    if (!this.model) {
+      throw new Error(
+        `Model "${config.model}" is not supported for provider "${config.provider}". ` +
+        `Try using a different model name (e.g., gpt-4o for OpenAI, claude-sonnet-4-20250514 for Anthropic).`
+      );
+    }
   }
 
   private getEnvKeyName(provider: Provider): string {
@@ -115,14 +123,19 @@ class PiAIClient implements LLMClient {
       tools: piTools,
     };
 
-    // Make completion request
-    const response = await complete(this.model, context, {
-      maxTokens: this.config.maxTokens,
-      temperature: this.config.temperature,
-    });
+    try {
+      // Make completion request
+      const response = await complete(this.model, context, {
+        maxTokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+      });
 
-    // Parse response
-    return this.parseResponse(response);
+      // Parse response
+      return this.parseResponse(response);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`LLM API error (${this.config.provider}/${this.config.model}): ${errorMessage}`);
+    }
   }
 
   /**
