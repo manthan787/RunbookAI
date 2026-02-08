@@ -118,23 +118,29 @@ export async function saveConfig(
         ? 'gpt-4-turbo-preview'
         : 'llama3';
 
+    // Use camelCase to match the config schema
     const mainConfig = {
       llm: {
         provider: llmConfig.provider,
         model: llmModel,
-        api_key: llmConfig.apiKey || `\${${llmConfig.provider.toUpperCase()}_API_KEY}`,
+        apiKey: llmConfig.apiKey || undefined,
       },
       agent: {
-        max_iterations: 10,
-        max_hypothesis_depth: 4,
-        context_threshold_tokens: 100000,
+        maxIterations: 10,
+        maxHypothesisDepth: 4,
+        contextThresholdTokens: 100000,
       },
       safety: {
-        require_approval: ['high', 'critical'],
-        max_mutations_per_session: 5,
-        cooldown_between_critical_ms: 60000,
+        requireApproval: ['high_risk', 'critical'],
+        maxMutationsPerSession: 5,
+        cooldownBetweenCriticalMs: 60000,
       },
     };
+
+    // Remove apiKey if not provided (will fall back to env var)
+    if (!mainConfig.llm.apiKey) {
+      delete (mainConfig.llm as Record<string, unknown>).apiKey;
+    }
 
     const mainYaml = stringifyYaml(mainConfig, { indent: 2 });
     await writeFile(mainConfigPath, mainYaml, 'utf-8');
