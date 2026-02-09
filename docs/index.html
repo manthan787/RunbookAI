@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RunbookAI - AI-Powered SRE Assistant</title>
+    <meta name="description" content="AI-powered SRE assistant that investigates incidents, executes runbooks, and manages cloud infrastructure using hypothesis-driven methodology." />
+    <meta name="keywords" content="SRE, incident response, AI agent, runbooks, kubernetes, AWS, PagerDuty, OpsGenie, DevOps, on-call" />
+    <link rel="canonical" href="https://runbook-agent.github.io/RunbookAI/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://runbook-agent.github.io/RunbookAI/" />
+    <meta property="og:title" content="RunbookAI - AI-Powered SRE Assistant" />
+    <meta property="og:description" content="Investigate incidents, execute runbooks, and manage cloud infrastructure with hypothesis-driven AI." />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RunbookAI - AI-Powered SRE Assistant" />
+    <meta name="twitter:description" content="Investigate incidents, execute runbooks, and manage cloud infrastructure with hypothesis-driven AI." />
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <nav>
+      <a href="./" class="logo">
+        <img src="assets/favicon.svg" alt="" />
+        RunbookAI
+      </a>
+      <div class="nav-links">
+        <a href="getting-started.html">Docs</a>
+        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
+        <a href="getting-started.html" class="btn btn-primary btn-sm">Get Started</a>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-badge fade-in">
+        <span>&#x1F916;</span> AI-Powered &bull; Hypothesis-Driven &bull; Safety-First
+      </div>
+
+      <h1 class="fade-in delay-1">
+        Your AI SRE,<br /><span>Always On Call</span>
+      </h1>
+
+      <p class="subtitle fade-in delay-2">
+        Investigate incidents, execute runbooks, and manage cloud infrastructure using
+        a research-first, hypothesis-driven methodology. Like having your best SRE available 24/7.
+      </p>
+
+      <!-- Value Props -->
+      <div class="value-props fade-in delay-2">
+        <div class="value-prop">
+          <div class="icon green">&#x2713;</div>
+          Forms & tests hypotheses
+        </div>
+        <div class="value-prop">
+          <div class="icon purple">&#x2713;</div>
+          Learns from your runbooks
+        </div>
+        <div class="value-prop">
+          <div class="icon blue">&#x2713;</div>
+          Mutations require approval
+        </div>
+      </div>
+
+      <div class="hero-buttons fade-in delay-3">
+        <a href="getting-started.html" class="btn btn-primary">
+          Get Started
+          <span>&#x2192;</span>
+        </a>
+        <a href="https://github.com/Runbook-Agent/RunbookAI" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+      </div>
+
+      <!-- Terminal Demo -->
+      <div class="terminal-demo fade-in delay-3">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dot red"></div>
+            <div class="code-dot yellow"></div>
+            <div class="code-dot green"></div>
+            <span class="terminal-title">Terminal</span>
+          </div>
+          <pre><code><span class="prompt">$</span> <span class="command">runbook investigate PD-12345</span>
+
+<span class="output"><span class="success">&#x2713;</span> Gathering incident context...</span>
+<span class="output"><span class="success">&#x2713;</span> Searching knowledge base...</span>
+
+<span class="label">Forming hypotheses:</span>
+<span class="hypothesis">  H1: Database connection pool exhaustion (0.7)</span>
+<span class="hypothesis">  H2: Recent deployment caused memory leak (0.5)</span>
+
+<span class="output"><span class="success">&#x2713;</span> Testing H1: Querying CloudWatch metrics...</span>
+<span class="evidence">  Evidence: <span class="strong">STRONG</span> - Connection count 3x normal</span>
+
+<span class="output"><span class="success">&#x2713;</span> Branching deeper on H1...</span>
+<span class="evidence">  Evidence: <span class="strong">STRONG</span> - Traffic spike at 14:32 UTC</span>
+
+<span class="root-cause">ROOT CAUSE:</span> <span class="white">Database connection exhaustion due to traffic spike</span>
+<span class="confidence">Confidence:</span> <span class="high">HIGH (0.92)</span>
+
+<span class="label">Suggested remediation:</span>
+<span class="remediation">  1. Scale RDS read replicas (requires approval)</span>
+<span class="remediation">  2. Increase connection pool limit</span>
+<span class="remediation">  3. Enable connection queuing</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>How RunbookAI Thinks</h2>
+        <p>A structured, hypothesis-driven approach to incident investigation</p>
+      </div>
+
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-number">1</div>
+          <h4>Gather Context</h4>
+          <p>Pulls incident details, recent deployments, and searches your knowledge base for relevant runbooks</p>
+        </div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-step">
+          <div class="flow-number">2</div>
+          <h4>Form Hypotheses</h4>
+          <p>Creates ranked hypotheses based on symptoms, past incidents, and organizational knowledge</p>
+        </div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-step">
+          <div class="flow-number">3</div>
+          <h4>Test & Branch</h4>
+          <p>Runs targeted queries to gather evidence. Branches deeper on strong evidence, prunes dead ends</p>
+        </div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-step">
+          <div class="flow-number">4</div>
+          <h4>Root Cause</h4>
+          <p>Identifies root cause with confidence level and suggests remediation with approval gates</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Built for Production SRE</h2>
+        <p>Everything you need for real incident response</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon purple">&#x1F50D;</div>
+          <h3>Hypothesis-Driven Investigation</h3>
+          <p>Forms and tests hypotheses about incidents. Branches on strong evidence, prunes dead ends. Never gets stuck in loops.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon blue">&#x1F4DA;</div>
+          <h3>Knowledge Integration</h3>
+          <p>Indexes your runbooks, post-mortems, and architecture docs. Learns from your organization's tribal knowledge.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon green">&#x1F512;</div>
+          <h3>Safety First</h3>
+          <p>All mutations require explicit approval with rollback commands. Full audit trail of every action.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon orange">&#x2601;</div>
+          <h3>Cloud Native</h3>
+          <p>First-class AWS and Kubernetes support. Read cluster status, query CloudWatch, inspect deployments.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon purple">&#x1F4DF;</div>
+          <h3>Incident Providers</h3>
+          <p>PagerDuty and OpsGenie integration. Pull incident context, update status, and post findings.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon blue">&#x1F527;</div>
+          <h3>Dynamic Skills</h3>
+          <p>Built-in and custom skills executed step-by-step with approval hooks. Extend with your own workflows.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>What Can RunbookAI Do?</h2>
+        <p>Common workflows SRE teams automate</p>
+      </div>
+
+      <div class="use-cases-grid">
+        <div class="use-case-card">
+          <div class="trigger">&#x1F6A8; PagerDuty alert</div>
+          <h3>Investigate Production Incidents</h3>
+          <p class="description">Agent pulls incident context, searches knowledge base for similar issues, forms hypotheses, and gathers evidence from AWS/K8s.</p>
+          <div class="outcome">
+            <span class="check">&#x2713;</span>
+            Root cause identified with confidence score and remediation steps
+          </div>
+        </div>
+
+        <div class="use-case-card">
+          <div class="trigger">&#x1F4AC; Natural language query</div>
+          <h3>Ask About Infrastructure</h3>
+          <p class="description">"What EC2 instances are running in prod?" "Show me pods with restart loops" "Who owns the payments service?"</p>
+          <div class="outcome">
+            <span class="check">&#x2713;</span>
+            Instant answers without digging through consoles
+          </div>
+        </div>
+
+        <div class="use-case-card">
+          <div class="trigger">&#x2699; Skill execution</div>
+          <h3>Execute Runbooks Automatically</h3>
+          <p class="description">Skills are step-by-step workflows loaded from your runbooks. Agent executes them with approval gates for mutations.</p>
+          <div class="outcome">
+            <span class="check">&#x2713;</span>
+            Consistent remediation following your documented procedures
+          </div>
+        </div>
+
+        <div class="use-case-card">
+          <div class="trigger">&#x1F4CA; Kubernetes query</div>
+          <h3>Cluster Health Checks</h3>
+          <p class="description">Get cluster status, list deployments, check node health, view recent events, find resource hogs.</p>
+          <div class="outcome">
+            <span class="check">&#x2713;</span>
+            Read-only queries safe to run anytime
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Integrations Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Integrations</h2>
+        <p>Connect to your existing infrastructure and tools</p>
+      </div>
+
+      <div class="integrations-grid">
+        <div class="integration-badge"><span>&#x2601;</span> AWS</div>
+        <div class="integration-badge"><span>&#x2638;</span> Kubernetes</div>
+        <div class="integration-badge"><span>&#x1F4DF;</span> PagerDuty</div>
+        <div class="integration-badge"><span>&#x1F514;</span> OpsGenie</div>
+        <div class="integration-badge"><span>&#x1F4AC;</span> Slack</div>
+        <div class="integration-badge"><span>&#x1F4D6;</span> Confluence</div>
+        <div class="integration-badge"><span>&#x1F4C1;</span> Google Drive</div>
+        <div class="integration-badge"><span>&#x1F4CA;</span> CloudWatch</div>
+        <div class="integration-badge"><span>&#x1F4C2;</span> Filesystem</div>
+      </div>
+
+      <div class="knowledge-sources">
+        <h3>Knowledge Sources</h3>
+        <p>Sync runbooks and docs from multiple sources:</p>
+        <ul>
+          <li><strong>Filesystem</strong> - Watch local markdown files</li>
+          <li><strong>Confluence</strong> - REST API with label filtering</li>
+          <li><strong>Google Drive</strong> - OAuth2 with folder sync</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Quick Start</h2>
+        <p>Up and running in 5 minutes</p>
+      </div>
+
+      <div class="quick-start">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dot red"></div>
+            <div class="code-dot yellow"></div>
+            <div class="code-dot green"></div>
+            <span class="terminal-title">Installation</span>
+            <button class="copy-btn" onclick="copyCode(this, 'install-code')">Copy</button>
+          </div>
+          <pre><code id="install-code"><span class="comment"># Clone and install</span>
+git clone https://github.com/Runbook-Agent/RunbookAI.git
+cd RunbookAI
+bun install
+
+<span class="comment"># Configure</span>
+mkdir -p .runbook
+cp examples/config.yaml .runbook/config.yaml
+export ANTHROPIC_API_KEY=your-api-key
+
+<span class="comment"># Run your first query</span>
+bun run dev ask "What EC2 instances are running?"
+
+<span class="comment"># Investigate an incident</span>
+bun run dev investigate PD-12345</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <h2>Ready to Automate Incident Response?</h2>
+      <p>Join SRE teams using AI to investigate incidents faster and more consistently.</p>
+      <div class="hero-buttons">
+        <a href="getting-started.html" class="btn btn-primary">
+          Get Started
+          <span>&#x2192;</span>
+        </a>
+        <a href="https://github.com/Runbook-Agent/RunbookAI" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
+        &nbsp;&middot;&nbsp;
+        <a href="getting-started.html">Documentation</a>
+        &nbsp;&middot;&nbsp;
+        MIT License
+      </p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

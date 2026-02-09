@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Getting Started - RunbookAI</title>
+    <meta name="description" content="Get started with RunbookAI - installation, configuration, and your first investigation." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .docs-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 48px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 120px 40px 80px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .docs-sidebar {
+        position: sticky;
+        top: 100px;
+        height: fit-content;
+      }
+
+      .docs-sidebar h3 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        margin-top: 24px;
+      }
+
+      .docs-sidebar h3:first-child {
+        margin-top: 0;
+      }
+
+      .docs-sidebar ul {
+        list-style: none;
+      }
+
+      .docs-sidebar a {
+        display: block;
+        padding: 8px 12px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+
+      .docs-sidebar a:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+
+      .docs-sidebar a.active {
+        background: rgba(168, 85, 247, 0.15);
+        color: var(--accent-purple);
+      }
+
+      .docs-content {
+        min-width: 0;
+      }
+
+      .docs-content h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+
+      .docs-content > p:first-of-type {
+        font-size: 18px;
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+      }
+
+      .docs-content h2 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-top: 48px;
+        margin-bottom: 16px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .docs-content h2:first-of-type {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+      }
+
+      .docs-content h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 32px;
+        margin-bottom: 12px;
+      }
+
+      .docs-content p {
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+      }
+
+      .docs-content code {
+        background: var(--bg-card);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'SF Mono', Monaco, monospace;
+        font-size: 14px;
+        color: var(--accent-purple);
+      }
+
+      .docs-content pre {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        margin-bottom: 16px;
+      }
+
+      .docs-content pre code {
+        background: none;
+        padding: 0;
+        color: var(--text-secondary);
+      }
+
+      .docs-content ul, .docs-content ol {
+        margin-bottom: 16px;
+        padding-left: 24px;
+      }
+
+      .docs-content li {
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .docs-content strong {
+        color: var(--text-primary);
+      }
+
+      .config-block {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+
+      .config-block .config-header {
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .config-block pre {
+        margin: 0;
+        border: none;
+        border-radius: 0;
+      }
+
+      @media (max-width: 900px) {
+        .docs-layout {
+          grid-template-columns: 1fr;
+          padding: 100px 24px 60px;
+        }
+
+        .docs-sidebar {
+          position: static;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          padding-bottom: 24px;
+          border-bottom: 1px solid var(--border-color);
+          margin-bottom: 24px;
+        }
+
+        .docs-sidebar h3 {
+          display: none;
+        }
+
+        .docs-sidebar ul {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <nav>
+      <a href="./" class="logo">
+        <img src="assets/favicon.svg" alt="" />
+        RunbookAI
+      </a>
+      <div class="nav-links">
+        <a href="getting-started.html">Docs</a>
+        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
+        <a href="getting-started.html" class="btn btn-primary btn-sm">Get Started</a>
+      </div>
+    </nav>
+
+    <div class="docs-layout">
+      <aside class="docs-sidebar">
+        <h3>Getting Started</h3>
+        <ul>
+          <li><a href="#installation" class="active">Installation</a></li>
+          <li><a href="#configuration">Configuration</a></li>
+          <li><a href="#first-query">First Query</a></li>
+        </ul>
+        <h3>Commands</h3>
+        <ul>
+          <li><a href="#ask">runbook ask</a></li>
+          <li><a href="#investigate">runbook investigate</a></li>
+          <li><a href="#knowledge">runbook knowledge</a></li>
+        </ul>
+        <h3>Integrations</h3>
+        <ul>
+          <li><a href="#aws">AWS</a></li>
+          <li><a href="#kubernetes">Kubernetes</a></li>
+          <li><a href="#incident">Incident Providers</a></li>
+        </ul>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Getting Started</h1>
+        <p>Get RunbookAI up and running in your environment. This guide covers installation, configuration, and running your first investigation.</p>
+
+        <h2 id="installation">Installation</h2>
+        <p>RunbookAI requires Node.js 20+ or Bun. Clone the repository and install dependencies:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Clone the repository
+git clone https://github.com/Runbook-Agent/RunbookAI.git
+cd RunbookAI
+
+# Install dependencies
+bun install
+
+# Or with npm
+npm install</code></pre>
+        </div>
+
+        <h2 id="configuration">Configuration</h2>
+        <p>Create a <code>.runbook</code> directory and add your configuration:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>mkdir -p .runbook
+cp examples/config.yaml .runbook/config.yaml</code></pre>
+        </div>
+
+        <p>Set your API key:</p>
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>export ANTHROPIC_API_KEY=your-api-key</code></pre>
+        </div>
+
+        <h3>Configuration File</h3>
+        <p>Edit <code>.runbook/config.yaml</code> with your settings:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+providers:
+  aws:
+    enabled: true
+    regions: [us-east-1, us-west-2]
+  kubernetes:
+    enabled: false
+
+incident:
+  pagerduty:
+    enabled: true
+    apiKey: ${PAGERDUTY_API_KEY}
+  opsgenie:
+    enabled: false
+    apiKey: ${OPSGENIE_API_KEY}
+
+knowledge:
+  sources:
+    - type: filesystem
+      path: .runbook/runbooks/
+      watch: true</code></pre>
+        </div>
+
+        <h2 id="first-query">Your First Query</h2>
+        <p>Run a simple infrastructure query:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Ask about your infrastructure
+bun run dev ask "What EC2 instances are running in prod?"
+
+# Check Kubernetes cluster status
+bun run dev ask "Show cluster status and any warning events"</code></pre>
+        </div>
+
+        <h2 id="ask">runbook ask</h2>
+        <p>Ask questions about your infrastructure in natural language:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>runbook ask "What's the status of the checkout-api service?"
+runbook ask "Show me RDS instances with high CPU"
+runbook ask "Who owns the payments service?"</code></pre>
+        </div>
+
+        <h2 id="investigate">runbook investigate</h2>
+        <p>Perform a hypothesis-driven investigation of a PagerDuty or OpsGenie incident:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>runbook investigate PD-12345
+runbook investigate PD-12345 --auto-remediate</code></pre>
+        </div>
+
+        <p>The agent will:</p>
+        <ol>
+          <li>Gather incident context</li>
+          <li>Form initial hypotheses</li>
+          <li>Test each hypothesis with targeted queries</li>
+          <li>Branch deeper on strong evidence</li>
+          <li>Identify root cause with confidence level</li>
+          <li>Suggest remediation</li>
+        </ol>
+
+        <h2 id="knowledge">runbook knowledge</h2>
+        <p>Manage the knowledge base:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Sync knowledge from all configured sources
+runbook knowledge sync
+
+# Search the knowledge base
+runbook knowledge search "redis connection timeout"
+
+# Authenticate with Google Drive
+runbook knowledge auth google</code></pre>
+        </div>
+
+        <h2 id="aws">AWS Integration</h2>
+        <p>RunbookAI can query EC2, RDS, CloudWatch, and other AWS services. Configure regions in your config file:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>providers:
+  aws:
+    enabled: true
+    regions: [us-east-1, us-west-2]</code></pre>
+        </div>
+
+        <p>Ensure your AWS credentials are configured (via environment variables, ~/.aws/credentials, or IAM role).</p>
+
+        <h2 id="kubernetes">Kubernetes Integration</h2>
+        <p>Query Kubernetes clusters with read-only operations:</p>
+        <ul>
+          <li><code>status</code> - Cluster status overview</li>
+          <li><code>pods</code> - List pods with status</li>
+          <li><code>deployments</code> - List deployments</li>
+          <li><code>nodes</code> - Node health and capacity</li>
+          <li><code>events</code> - Recent cluster events</li>
+          <li><code>top_pods</code> - Resource usage by pod</li>
+          <li><code>top_nodes</code> - Resource usage by node</li>
+        </ul>
+
+        <h2 id="incident">Incident Providers</h2>
+        <p>RunbookAI integrates with PagerDuty and OpsGenie to pull incident context:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>incident:
+  pagerduty:
+    enabled: true
+    apiKey: ${PAGERDUTY_API_KEY}
+  opsgenie:
+    enabled: false
+    apiKey: ${OPSGENIE_API_KEY}</code></pre>
+        </div>
+
+        <h2>Adding Runbooks</h2>
+        <p>Create markdown files in <code>.runbook/runbooks/</code> with frontmatter:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/runbooks/redis-connection.md</div>
+          <pre><code>---
+type: runbook
+services: [checkout-api, cart-service]
+symptoms:
+  - "Redis connection timeout"
+  - "Connection pool exhausted"
+severity: sev2
+---
+
+# Redis Connection Exhaustion
+
+## Symptoms
+- Connection timeouts in checkout-api logs
+- Connection pool exhausted errors
+
+## Quick Diagnosis
+1. Check Redis connection count
+2. Check client memory usage
+3. Review recent traffic patterns
+
+## Mitigation Steps
+1. Scale Redis cluster
+2. Increase connection pool limit
+3. Enable connection queuing</code></pre>
+        </div>
+
+        <p>See <code>examples/runbooks/</code> for more examples.</p>
+      </main>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
+        &nbsp;&middot;&nbsp;
+        <a href="getting-started.html">Documentation</a>
+        &nbsp;&middot;&nbsp;
+        MIT License
+      </p>
+    </footer>
+  </body>
+</html>
