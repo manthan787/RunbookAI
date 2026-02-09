@@ -2,7 +2,7 @@
 import type { Props } from '@astrojs/starlight/props';
 import Default from '@astrojs/starlight/components/Hero.astro';
 
-const isHomePage = Astro.props.slug === '';
+const isHomePage = Astro.props.slug === '' || Astro.props.slug === 'index' || Astro.props.id === 'index.mdx';
 ---
 
 {isHomePage ? (
