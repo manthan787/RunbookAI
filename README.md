@@ -220,6 +220,16 @@ npm run eval:all -- \
   --tracerca-input examples/evals/tracerca-input.sample.json
 ```
 
+`eval:all` now auto-runs dataset bootstrap (`src/eval/setup-datasets.ts`) before benchmarking.
+It will attempt to clone required public dataset repos under `examples/evals/datasets/`, then continue
+with available local inputs and fallback fixtures when network/downloads are unavailable.
+
+To run without bootstrap:
+
+```bash
+npm run eval:all -- --no-setup
+```
+
 This generates per-benchmark reports plus an aggregate summary:
 - `.runbook/evals/all-benchmarks/rcaeval-report.json`
 - `.runbook/evals/all-benchmarks/rootly-report.json`

@@ -254,3 +254,27 @@ Behavioral guarantees:
 1. Missing dataset input for a benchmark yields `skipped` status with a reason.
 2. Converter failures are surfaced as `failed` with command logs.
 3. Benchmark reports are always emitted per benchmark run path when investigation execution completes.
+
+---
+
+## Session Summary (2026-02-09, update)
+
+### What changed
+- Added dataset bootstrap script for evaluations:
+  - `src/eval/setup-datasets.ts`
+  - clones/pins required public repos into `examples/evals/datasets/` when missing
+- `eval:all` now runs bootstrap automatically before benchmarks.
+- Added Rootly fallback behavior in unified runner:
+  - if raw logs are unavailable, it runs from `examples/evals/rootly-logs-fixtures.generated.json`.
+- Added npm script:
+  - `eval:setup`
+
+### Files
+- `src/eval/setup-datasets.ts`
+- `src/eval/run-all-benchmarks.ts`
+- `package.json`
+- `README.md`
+- `docs/INVESTIGATION_EVAL.md`
+
+### Impact
+- Benchmark execution is closer to one-command operation with no manual dataset prep in common flows.
