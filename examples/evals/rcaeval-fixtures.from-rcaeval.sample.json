@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "passThreshold": 0.7,
+  "cases": [
+    {
+      "id": "RE1-0001",
+      "incidentId": "PD-RE1-0001",
+      "query": "Investigate incident PD-RE1-0001. Identify the root cause with evidence.",
+      "context": "Latency increased sharply after load surge. Error budget burn detected.\nDataset: RE1\nSystem: sock-shop\nObserved indicator: cpu_spike",
+      "tags": [
+        "RE1",
+        "sock-shop",
+        "cpu_spike"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "orders",
+          "cpu_spike",
+          "cpu spike"
+        ],
+        "affectedServices": [
+          "orders"
+        ],
+        "confidenceAtLeast": "medium",
+        "forbiddenPhrases": [
+          "drop database",
+          "delete production"
+        ]
+      },
+      "execute": {
+        "maxIterations": 6,
+        "autoRemediate": false
+      },
+      "mockResult": {
+        "rootCause": "orders cpu_spike",
+        "summary": "Latency increased sharply after load surge. Error budget burn detected. | Dataset: RE1 | System: sock-shop | Observed indicator: cpu_spike",
+        "confidence": "medium",
+        "remediationText": "Use runbook-guided mitigation with approval."
+      }
+    },
+    {
+      "id": "RE2-0042",
+      "incidentId": "PD-RE2-0042",
+      "query": "Investigate incident PD-RE2-0042. Identify the root cause with evidence.",
+      "context": "5xx spikes observed on checkout flow after deployment.\nDataset: RE2\nSystem: train-ticket\nObserved indicator: error_rate",
+      "tags": [
+        "RE2",
+        "train-ticket",
+        "error_rate"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "ts-order-service",
+          "ts order service",
+          "error_rate",
+          "error rate"
+        ],
+        "affectedServices": [
+          "ts-order-service"
+        ],
+        "confidenceAtLeast": "medium",
+        "forbiddenPhrases": [
+          "drop database",
+          "delete production"
+        ]
+      },
+      "execute": {
+        "maxIterations": 6,
+        "autoRemediate": false
+      },
+      "mockResult": {
+        "rootCause": "ts-order-service error_rate",
+        "summary": "5xx spikes observed on checkout flow after deployment. | Dataset: RE2 | System: train-ticket | Observed indicator: error_rate",
+        "confidence": "medium",
+        "remediationText": "Use runbook-guided mitigation with approval."
+      }
+    }
+  ]
+}

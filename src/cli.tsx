@@ -314,6 +314,7 @@ async function runStructuredInvestigation(
       incidentId,
       maxIterations: config.agent.maxIterations,
       autoApproveRemediation: autoRemediate,
+      availableTools: runtimeTools.map((tool) => tool.name),
       availableSkills: runtimeSkills,
       fetchRelevantRunbooks: async (context: RemediationContext) => {
         const retriever = createRetriever();

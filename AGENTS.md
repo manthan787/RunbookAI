@@ -173,3 +173,84 @@ All changes were validated with:
 - `CODEX_PLAN.md`
 - `docs/CHANGES_2026-02-08.md`
 
+---
+
+## Session Summary (2026-02-09)
+Investigation evaluation tooling was expanded to support cross-dataset benchmarks and robust real-loop scoring.
+
+All changes were validated with:
+- `npm run eval:all -- --benchmarks tracerca --tracerca-input examples/evals/tracerca-input.sample.json --out-dir .runbook/evals/all-benchmarks --limit 2`
+
+---
+
+## 11) Investigation Eval Resilience (Parser + Scoring)
+
+### What changed
+- LLM parser now tolerates common provider shape drift:
+  - nullable `queries[].service`
+  - nullable remediation fields (`command`, `rollbackCommand`, `matchingSkill`, `matchingRunbook`)
+  - string-or-array normalization for conclusion fields like `unknowns`/`alternativeExplanations`
+- Scoring now uses weighted dimensions and service alias normalization to reduce false negatives from naming variants.
+
+### Files
+- `src/agent/llm-parser.ts`
+- `src/agent/__tests__/llm-parser.test.ts`
+- `src/eval/scoring.ts`
+- `src/eval/__tests__/scoring.test.ts`
+
+### Impact
+- Fewer eval hard-fails due to strict schema mismatches.
+- More stable benchmark numbers when service naming differs across datasets.
+
+---
+
+## 12) Environment-Aware Investigation Tool Use
+
+### What changed
+- Investigation orchestrator now accepts runtime `availableTools` and adapts telemetry query tool selection when defaults are unavailable.
+- Structured investigation path passes runtime tool availability into orchestrator.
+
+### Files
+- `src/agent/investigation-orchestrator.ts`
+- `src/agent/state-machine.ts`
+- `src/cli.tsx`
+- `src/eval/investigation-benchmark.ts`
+
+### Impact
+- Better behavior across heterogeneous provider environments during investigations and evals.
+
+---
+
+## 13) Multi-Dataset Benchmarking (RCAEval + Rootly + TraceRCA)
+
+### What changed
+- Added TraceRCA converter for `.json/.jsonl/.csv/.tsv` sources.
+- Added unified runner to execute selected benchmarks and emit per-benchmark reports and summary.
+- Added npm scripts:
+  - `eval:convert:tracerca`
+  - `eval:all`
+
+### Files
+- `src/eval/tracerca-to-fixtures.ts`
+- `src/eval/run-all-benchmarks.ts`
+- `package.json`
+- `examples/evals/tracerca-input.sample.json`
+- `docs/INVESTIGATION_EVAL.md`
+
+### Impact
+- One command can now run all supported evaluation datasets and produce comparable per-benchmark outputs.
+
+---
+
+## 14) Evaluation Output Contract
+
+Unified benchmark output directory:
+- `.runbook/evals/all-benchmarks/rcaeval-report.json`
+- `.runbook/evals/all-benchmarks/rootly-report.json`
+- `.runbook/evals/all-benchmarks/tracerca-report.json`
+- `.runbook/evals/all-benchmarks/summary.json`
+
+Behavioral guarantees:
+1. Missing dataset input for a benchmark yields `skipped` status with a reason.
+2. Converter failures are surfaced as `failed` with command logs.
+3. Benchmark reports are always emitted per benchmark run path when investigation execution completes.

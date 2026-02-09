@@ -132,6 +132,27 @@ describe('parseHypothesisGeneration', () => {
 
     expect(() => parseHypothesisGeneration(response)).toThrow();
   });
+
+  it('should accept null query service and normalize it', () => {
+    const response = `{
+      "hypotheses": [{
+        "statement": "Upstream dependency latency",
+        "category": "dependency",
+        "priority": 2,
+        "confirmingEvidence": "Gateway timeout spikes",
+        "refutingEvidence": "No dependency saturation",
+        "queries": [{
+          "type": "logs",
+          "description": "Check timeout errors",
+          "service": null
+        }]
+      }],
+      "reasoning": "Dependency behavior matches observed symptoms"
+    }`;
+
+    const result = parseHypothesisGeneration(response);
+    expect(result.hypotheses[0].queries[0].service).toBeUndefined();
+  });
 });
 
 describe('parseEvidenceEvaluation', () => {
@@ -272,6 +293,29 @@ describe('parseConclusion', () => {
     expect(result.confirmedHypothesisId).toBe('h_1');
     expect(result.evidenceChain).toHaveLength(1);
   });
+
+  it('should coerce string unknowns and alternatives into arrays', () => {
+    const response = `{
+      "rootCause": "Redis saturation",
+      "confidence": "medium",
+      "confirmedHypothesisId": "h_2",
+      "evidenceChain": [
+        {
+          "finding": "Redis max connections reached",
+          "source": "metrics",
+          "strength": "strong"
+        }
+      ],
+      "affectedServices": "ts-order-service",
+      "alternativeExplanations": "Transient network jitter",
+      "unknowns": "Whether this issue recurs under peak load"
+    }`;
+
+    const result = parseConclusion(response);
+    expect(result.affectedServices).toEqual(['ts-order-service']);
+    expect(result.alternativeExplanations).toEqual(['Transient network jitter']);
+    expect(result.unknowns).toEqual(['Whether this issue recurs under peak load']);
+  });
 });
 
 describe('parseRemediationPlan', () => {
@@ -299,6 +343,31 @@ describe('parseRemediationPlan', () => {
     expect(result.steps[0].requiresApproval).toBe(true);
     expect(result.estimatedRecoveryTime).toBe('5 minutes');
     expect(result.monitoring).toHaveLength(2);
+  });
+
+  it('should accept null optional fields in remediation steps', () => {
+    const response = `{
+      "steps": [
+        {
+          "action": "Scale service",
+          "description": "Increase replicas",
+          "command": null,
+          "rollbackCommand": null,
+          "riskLevel": "low",
+          "requiresApproval": false,
+          "matchingSkill": null,
+          "matchingRunbook": null
+        }
+      ],
+      "monitoring": []
+    }`;
+
+    const result = parseRemediationPlan(response);
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].command).toBeUndefined();
+    expect(result.steps[0].rollbackCommand).toBeUndefined();
+    expect(result.steps[0].matchingSkill).toBeUndefined();
+    expect(result.steps[0].matchingRunbook).toBeUndefined();
   });
 });
 
@@ -366,9 +435,7 @@ describe('toHypothesisInput', () => {
       priority: 2,
       confirmingEvidence: 'Confirming test',
       refutingEvidence: 'Refuting test',
-      queries: [
-        { type: 'metrics' as const, description: 'Check CPU', service: 'ec2' },
-      ],
+      queries: [{ type: 'metrics' as const, description: 'Check CPU', service: 'ec2' }],
     };
 
     const result = toHypothesisInput(input, 'h_parent');
@@ -404,9 +471,7 @@ describe('toConclusionResult', () => {
       rootCause: 'Test cause',
       confidence: 'high' as const,
       confirmedHypothesisId: 'h_1',
-      evidenceChain: [
-        { finding: 'Test', source: 'cloudwatch', strength: 'strong' as const },
-      ],
+      evidenceChain: [{ finding: 'Test', source: 'cloudwatch', strength: 'strong' as const }],
       alternativeExplanations: ['Alt 1'],
       unknowns: ['Unknown 1'],
     };

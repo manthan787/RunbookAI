@@ -5,7 +5,14 @@
  * Uses @mariozechner/pi-ai for multi-provider support (20+ providers).
  */
 
-import { getModel, complete, type Context, type Tool as PiTool, Type, type TSchema } from '@mariozechner/pi-ai';
+import {
+  getModel,
+  complete,
+  type Context,
+  type Tool as PiTool,
+  Type,
+  type TSchema,
+} from '@mariozechner/pi-ai';
 import type { Tool } from '../agent/types';
 import type { LLMClient, LLMResponse, ToolCall } from '../agent/agent';
 
@@ -78,7 +85,7 @@ class PiAIClient implements LLMClient {
     if (!this.model) {
       throw new Error(
         `Model "${config.model}" is not supported for provider "${config.provider}". ` +
-        `Try using a different model name (e.g., gpt-4o for OpenAI, claude-sonnet-4-20250514 for Anthropic).`
+          `Try using a different model name (e.g., gpt-4o for OpenAI, claude-sonnet-4-20250514 for Anthropic).`
       );
     }
   }
@@ -102,11 +109,7 @@ class PiAIClient implements LLMClient {
     return envKeys[provider] || '';
   }
 
-  async chat(
-    systemPrompt: string,
-    userPrompt: string,
-    tools?: Tool[]
-  ): Promise<LLMResponse> {
+  async chat(systemPrompt: string, userPrompt: string, tools?: Tool[]): Promise<LLMResponse> {
     // Convert tools to pi-ai format
     const piTools = tools?.map((t) => this.convertTool(t));
 
@@ -134,7 +137,9 @@ class PiAIClient implements LLMClient {
       return this.parseResponse(response);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`LLM API error (${this.config.provider}/${this.config.model}): ${errorMessage}`);
+      throw new Error(
+        `LLM API error (${this.config.provider}/${this.config.model}): ${errorMessage}`
+      );
     }
   }
 
@@ -155,7 +160,9 @@ class PiAIClient implements LLMClient {
       } else if (value.type === 'array') {
         properties[key] = Type.Array(Type.String(), { description: value.description });
       } else if (value.type === 'object') {
-        properties[key] = Type.Record(Type.String(), Type.Unknown(), { description: value.description });
+        properties[key] = Type.Record(Type.String(), Type.Unknown(), {
+          description: value.description,
+        });
       } else {
         properties[key] = Type.Unknown({ description: value.description });
       }
@@ -171,7 +178,21 @@ class PiAIClient implements LLMClient {
   /**
    * Parse pi-ai response into our format
    */
-  private parseResponse(response: { content: Array<{ type: string; text?: string; id?: string; name?: string; arguments?: unknown }> }): LLMResponse {
+  private parseResponse(response: {
+    content: Array<{
+      type: string;
+      text?: string;
+      id?: string;
+      name?: string;
+      arguments?: unknown;
+    }>;
+    stopReason?: string;
+    errorMessage?: string;
+  }): LLMResponse {
+    if (response.stopReason === 'error') {
+      throw new Error(response.errorMessage || 'Provider returned an unknown error');
+    }
+
     let content = '';
     const toolCalls: ToolCall[] = [];
     let thinking: string | undefined;
@@ -205,11 +226,7 @@ export class MockLLMClient implements LLMClient {
     this.responses.push(response);
   }
 
-  async chat(
-    _systemPrompt: string,
-    _userPrompt: string,
-    _tools?: Tool[]
-  ): Promise<LLMResponse> {
+  async chat(_systemPrompt: string, _userPrompt: string, _tools?: Tool[]): Promise<LLMResponse> {
     if (this.callIndex >= this.responses.length) {
       return { content: 'No more mock responses', toolCalls: [] };
     }

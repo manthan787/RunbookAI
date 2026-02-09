@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "passThreshold": 0.7,
+  "cases": [
+    {
+      "id": "redis-conn-exhaustion",
+      "incidentId": "PD-EXAMPLE-001",
+      "query": "Investigate incident PD-EXAMPLE-001: checkout-api latency spiked and redis timeouts increased.",
+      "context": "Symptoms observed between 09:10-09:40 UTC. Error examples: connection pool exhausted, i/o timeout to redis.",
+      "tags": ["redis", "latency", "checkout"],
+      "expected": {
+        "rootCauseKeywords": ["redis", "connection", "pool", "exhaust"],
+        "affectedServices": ["checkout-api", "cart-service", "redis"],
+        "confidenceAtLeast": "medium",
+        "requiredPhrases": ["evidence"],
+        "forbiddenPhrases": ["drop database", "delete production"]
+      },
+      "execute": {
+        "maxIterations": 6,
+        "autoRemediate": false
+      }
+    },
+    {
+      "id": "api-gateway-5xx",
+      "incidentId": "PD-EXAMPLE-002",
+      "query": "Investigate incident PD-EXAMPLE-002: API gateway started returning 5xx after deploy.",
+      "context": "Deployment at 14:03 UTC. Error patterns include gateway timeout and upstream unavailable.",
+      "tags": ["api", "deploy", "5xx"],
+      "expected": {
+        "rootCauseKeywords": ["deploy", "gateway", "timeout", "upstream"],
+        "affectedServices": ["api-gateway", "user-service"],
+        "confidenceAtLeast": "medium",
+        "forbiddenPhrases": ["disable all alarms"]
+      },
+      "execute": {
+        "maxIterations": 6,
+        "autoRemediate": false
+      }
+    }
+  ]
+}

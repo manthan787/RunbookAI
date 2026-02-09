@@ -1,0 +1,148 @@
+{
+  "version": "1.0",
+  "passThreshold": 0.7,
+  "cases": [
+    {
+      "id": "rootly-apache-1",
+      "incidentId": "ROOTLY-APACHE-1",
+      "query": "Investigate incident ROOTLY-APACHE-1. Identify root cause from Apache error evidence.",
+      "context": "Apache error log evidence:\n[Wed Jan 29 00:36:30 2024] [authz_core:error] [pid 3631249] [client 128.199.182.55:48804] AH01630: client denied by server configuration: /var/www/rootly.com/server-status",
+      "tags": [
+        "rootly",
+        "apache",
+        "logs"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "apache",
+          "2024",
+          "authz",
+          "core",
+          "3631249"
+        ],
+        "affectedServices": [
+          "apache"
+        ],
+        "confidenceAtLeast": "medium",
+        "requiredPhrases": [
+          "evidence"
+        ],
+        "forbiddenPhrases": [
+          "delete production",
+          "drop database"
+        ]
+      },
+      "execute": {
+        "maxIterations": 5,
+        "autoRemediate": false
+      }
+    },
+    {
+      "id": "rootly-apache-2",
+      "incidentId": "ROOTLY-APACHE-2",
+      "query": "Investigate incident ROOTLY-APACHE-2. Identify root cause from Apache error evidence.",
+      "context": "Apache error log evidence:\n[Wed Jan 29 02:43:10 2024] [authz_core:error] [pid 3632037] [client 64.23.218.208:60720] AH01630: client denied by server configuration: /var/www/rootly.com/server-status",
+      "tags": [
+        "rootly",
+        "apache",
+        "logs"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "apache",
+          "2024",
+          "authz",
+          "core",
+          "3632037"
+        ],
+        "affectedServices": [
+          "apache"
+        ],
+        "confidenceAtLeast": "medium",
+        "requiredPhrases": [
+          "evidence"
+        ],
+        "forbiddenPhrases": [
+          "delete production",
+          "drop database"
+        ]
+      },
+      "execute": {
+        "maxIterations": 5,
+        "autoRemediate": false
+      }
+    },
+    {
+      "id": "rootly-openssh-1",
+      "incidentId": "ROOTLY-OPENSSH-1",
+      "query": "Investigate incident ROOTLY-OPENSSH-1. Identify root cause from SSH access/security logs.",
+      "context": "OpenSSH log evidence:\nJan 26 00:00:05 d2-4-bhs5 sshd[3578055]: Invalid user sammy from 35.246.248.48 port 47192",
+      "tags": [
+        "rootly",
+        "openssh",
+        "security-logs"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "ssh",
+          "openssh",
+          "bhs5",
+          "3578055",
+          "sammy",
+          "port"
+        ],
+        "affectedServices": [
+          "openssh"
+        ],
+        "confidenceAtLeast": "medium",
+        "requiredPhrases": [
+          "evidence"
+        ],
+        "forbiddenPhrases": [
+          "disable all security",
+          "allow all access"
+        ]
+      },
+      "execute": {
+        "maxIterations": 5,
+        "autoRemediate": false
+      }
+    },
+    {
+      "id": "rootly-openssh-2",
+      "incidentId": "ROOTLY-OPENSSH-2",
+      "query": "Investigate incident ROOTLY-OPENSSH-2. Identify root cause from SSH access/security logs.",
+      "context": "OpenSSH log evidence:\nJan 26 00:00:05 d2-4-bhs5 sshd[3578055]: Disconnected from invalid user sammy 35.246.248.48 port 47192 [preauth]",
+      "tags": [
+        "rootly",
+        "openssh",
+        "security-logs"
+      ],
+      "expected": {
+        "rootCauseKeywords": [
+          "ssh",
+          "openssh",
+          "bhs5",
+          "3578055",
+          "disconnected",
+          "sammy"
+        ],
+        "affectedServices": [
+          "openssh"
+        ],
+        "confidenceAtLeast": "medium",
+        "requiredPhrases": [
+          "evidence"
+        ],
+        "forbiddenPhrases": [
+          "disable all security",
+          "allow all access"
+        ]
+      },
+      "execute": {
+        "maxIterations": 5,
+        "autoRemediate": false
+      }
+    }
+  ]
+}

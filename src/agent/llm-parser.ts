@@ -6,7 +6,13 @@
  */
 
 import { z } from 'zod';
-import type { InvestigationHypothesis, EvidenceEvaluation, Conclusion, TriageResult, RemediationStep } from './state-machine';
+import type {
+  InvestigationHypothesis,
+  EvidenceEvaluation,
+  Conclusion,
+  TriageResult,
+  RemediationStep,
+} from './state-machine';
 import type { CausalQuery } from './causal-query';
 
 /**
@@ -14,15 +20,30 @@ import type { CausalQuery } from './causal-query';
  */
 export const HypothesisSchema = z.object({
   statement: z.string().describe('Clear statement of what might be causing the issue'),
-  category: z.enum(['infrastructure', 'application', 'dependency', 'configuration', 'capacity', 'unknown']),
+  category: z.enum([
+    'infrastructure',
+    'application',
+    'dependency',
+    'configuration',
+    'capacity',
+    'unknown',
+  ]),
   priority: z.number().min(1).max(5).describe('1 = highest priority, 5 = lowest'),
   confirmingEvidence: z.string().describe('What evidence would confirm this hypothesis'),
   refutingEvidence: z.string().describe('What evidence would refute this hypothesis'),
-  queries: z.array(z.object({
-    type: z.enum(['metrics', 'logs', 'traces', 'config', 'status']),
-    description: z.string(),
-    service: z.string().optional(),
-  })).describe('Queries to run to test this hypothesis'),
+  queries: z
+    .array(
+      z.object({
+        type: z.enum(['metrics', 'logs', 'traces', 'config', 'status']),
+        description: z.string(),
+        service: z
+          .string()
+          .nullable()
+          .optional()
+          .transform((value) => value ?? undefined),
+      })
+    )
+    .describe('Queries to run to test this hypothesis'),
 });
 
 export type HypothesisInput = z.infer<typeof HypothesisSchema>;
@@ -44,12 +65,19 @@ export const EvidenceEvaluationSchema = z.object({
   hypothesisId: z.string(),
   evidenceStrength: z.enum(['strong', 'weak', 'none', 'contradicting', 'pending']),
   confidence: z.number().min(0).max(100),
-  reasoning: z.string().describe('Explanation of how the evidence supports or refutes the hypothesis'),
-  action: z.enum(['branch', 'prune', 'confirm', 'continue']).describe(
-    'branch = create sub-hypotheses, prune = eliminate hypothesis, confirm = root cause found, continue = need more data'
-  ),
+  reasoning: z
+    .string()
+    .describe('Explanation of how the evidence supports or refutes the hypothesis'),
+  action: z
+    .enum(['branch', 'prune', 'confirm', 'continue'])
+    .describe(
+      'branch = create sub-hypotheses, prune = eliminate hypothesis, confirm = root cause found, continue = need more data'
+    ),
   findings: z.array(z.string()).describe('Key findings from the evidence'),
-  subHypotheses: z.array(HypothesisSchema).optional().describe('Sub-hypotheses if action is branch'),
+  subHypotheses: z
+    .array(HypothesisSchema)
+    .optional()
+    .describe('Sub-hypotheses if action is branch'),
 });
 
 export type EvidenceEvaluationInput = z.infer<typeof EvidenceEvaluationSchema>;
@@ -79,13 +107,29 @@ export const ConclusionSchema = z.object({
   rootCause: z.string().describe('The identified root cause'),
   confidence: z.enum(['high', 'medium', 'low']),
   confirmedHypothesisId: z.string(),
-  evidenceChain: z.array(z.object({
-    finding: z.string(),
-    source: z.string(),
-    strength: z.enum(['strong', 'weak', 'none', 'contradicting', 'pending']),
-  })),
-  alternativeExplanations: z.array(z.string()).describe('Other possible explanations that weren\'t confirmed'),
-  unknowns: z.array(z.string()).describe('What we still don\'t know'),
+  affectedServices: z
+    .union([z.array(z.string()), z.string()])
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      return Array.isArray(value) ? value : [value];
+    })
+    .describe('Canonical service identifiers most directly impacted'),
+  evidenceChain: z.array(
+    z.object({
+      finding: z.string(),
+      source: z.string(),
+      strength: z.enum(['strong', 'weak', 'none', 'contradicting', 'pending']),
+    })
+  ),
+  alternativeExplanations: z
+    .union([z.array(z.string()), z.string()])
+    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .describe("Other possible explanations that weren't confirmed"),
+  unknowns: z
+    .union([z.array(z.string()), z.string()])
+    .transform((value) => (Array.isArray(value) ? value : [value]))
+    .describe("What we still don't know"),
 });
 
 export type ConclusionInput = z.infer<typeof ConclusionSchema>;
@@ -94,16 +138,38 @@ export type ConclusionInput = z.infer<typeof ConclusionSchema>;
  * Schema for remediation plan response
  */
 export const RemediationPlanSchema = z.object({
-  steps: z.array(z.object({
-    action: z.string().describe('What to do'),
-    description: z.string().describe('Detailed description'),
-    command: z.string().optional().describe('CLI command to execute'),
-    rollbackCommand: z.string().optional().describe('Command to undo this step'),
-    riskLevel: z.enum(['low', 'medium', 'high', 'critical']),
-    requiresApproval: z.boolean(),
-    matchingSkill: z.string().optional().describe('Skill that can execute this'),
-    matchingRunbook: z.string().optional().describe('Runbook that matches this step'),
-  })),
+  steps: z.array(
+    z.object({
+      action: z.string().describe('What to do'),
+      description: z.string().describe('Detailed description'),
+      command: z
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value ?? undefined)
+        .describe('CLI command to execute'),
+      rollbackCommand: z
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value ?? undefined)
+        .describe('Command to undo this step'),
+      riskLevel: z.enum(['low', 'medium', 'high', 'critical']),
+      requiresApproval: z.boolean(),
+      matchingSkill: z
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value ?? undefined)
+        .describe('Skill that can execute this'),
+      matchingRunbook: z
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value ?? undefined)
+        .describe('Runbook that matches this step'),
+    })
+  ),
   estimatedRecoveryTime: z.string().optional().describe('How long until service is restored'),
   monitoring: z.array(z.string()).describe('What to monitor after remediation'),
 });
@@ -114,19 +180,23 @@ export type RemediationPlanInput = z.infer<typeof RemediationPlanSchema>;
  * Schema for log analysis response
  */
 export const LogAnalysisSchema = z.object({
-  patterns: z.array(z.object({
-    pattern: z.string().describe('The recurring pattern found'),
-    count: z.number().describe('How many times it occurred'),
-    severity: z.enum(['info', 'warning', 'error', 'critical']),
-    firstSeen: z.string().describe('Timestamp of first occurrence'),
-    lastSeen: z.string().describe('Timestamp of last occurrence'),
-    examples: z.array(z.string()).max(3).describe('Example log lines'),
-  })),
-  anomalies: z.array(z.object({
-    description: z.string(),
-    timestamp: z.string(),
-    relevance: z.enum(['high', 'medium', 'low']),
-  })),
+  patterns: z.array(
+    z.object({
+      pattern: z.string().describe('The recurring pattern found'),
+      count: z.number().describe('How many times it occurred'),
+      severity: z.enum(['info', 'warning', 'error', 'critical']),
+      firstSeen: z.string().describe('Timestamp of first occurrence'),
+      lastSeen: z.string().describe('Timestamp of last occurrence'),
+      examples: z.array(z.string()).max(3).describe('Example log lines'),
+    })
+  ),
+  anomalies: z.array(
+    z.object({
+      description: z.string(),
+      timestamp: z.string(),
+      relevance: z.enum(['high', 'medium', 'low']),
+    })
+  ),
   summary: z.string().describe('Overall summary of the log analysis'),
   suggestedHypotheses: z.array(z.string()).describe('Hypotheses suggested by the logs'),
 });
@@ -243,7 +313,17 @@ export interface SimpleQuery {
 export function toHypothesisInput(
   hypothesis: HypothesisInput,
   parentId?: string
-): Omit<InvestigationHypothesis, 'id' | 'status' | 'evidenceStrength' | 'confidence' | 'queryResults' | 'children' | 'createdAt' | 'updatedAt'> {
+): Omit<
+  InvestigationHypothesis,
+  | 'id'
+  | 'status'
+  | 'evidenceStrength'
+  | 'confidence'
+  | 'queryResults'
+  | 'children'
+  | 'createdAt'
+  | 'updatedAt'
+> {
   return {
     statement: hypothesis.statement,
     category: hypothesis.category,
@@ -278,6 +358,7 @@ export function toConclusionResult(input: ConclusionInput): Conclusion {
     rootCause: input.rootCause,
     confidence: input.confidence,
     confirmedHypothesisId: input.confirmedHypothesisId,
+    affectedServices: input.affectedServices,
     evidenceChain: input.evidenceChain,
     alternativeExplanations: input.alternativeExplanations,
     unknowns: input.unknowns,
@@ -395,6 +476,7 @@ Respond with a JSON object matching this schema:
 - rootCause: The identified root cause
 - confidence: "high" | "medium" | "low"
 - confirmedHypothesisId: ID of the confirmed hypothesis
+- affectedServices: Array of canonical service IDs that are impacted (must not be empty if any service is known)
 - evidenceChain: Array of { finding, source, strength }
 - alternativeExplanations: Other possible explanations not confirmed
 - unknowns: What we still don't know

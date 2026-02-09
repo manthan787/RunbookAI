@@ -1,0 +1,20 @@
+[
+  {
+    "case_id": "RE1-0001",
+    "incident_id": "PD-RE1-0001",
+    "dataset": "RE1",
+    "system": "sock-shop",
+    "root_cause_service": "orders",
+    "root_cause_indicator": "cpu_spike",
+    "description": "Latency increased sharply after load surge. Error budget burn detected."
+  },
+  {
+    "case_id": "RE2-0042",
+    "incident_id": "PD-RE2-0042",
+    "dataset": "RE2",
+    "system": "train-ticket",
+    "root_cause_service": "ts-order-service",
+    "root_cause_indicator": "error_rate",
+    "description": "5xx spikes observed on checkout flow after deployment."
+  }
+]

@@ -55,7 +55,13 @@ export interface TriageResult {
 export interface InvestigationHypothesis {
   id: string;
   statement: string;
-  category: 'infrastructure' | 'application' | 'dependency' | 'configuration' | 'capacity' | 'unknown';
+  category:
+    | 'infrastructure'
+    | 'application'
+    | 'dependency'
+    | 'configuration'
+    | 'capacity'
+    | 'unknown';
   priority: number;
   status: 'pending' | 'investigating' | 'confirmed' | 'pruned';
   evidenceStrength: EvidenceStrength;
@@ -90,6 +96,7 @@ export interface Conclusion {
   rootCause: string;
   confidence: 'high' | 'medium' | 'low';
   confirmedHypothesisId: string;
+  affectedServices?: string[];
   evidenceChain: Array<{
     finding: string;
     source: string;
@@ -319,7 +326,17 @@ export class InvestigationStateMachine extends EventEmitter {
    * Add a hypothesis
    */
   addHypothesis(
-    hypothesis: Omit<InvestigationHypothesis, 'id' | 'status' | 'evidenceStrength' | 'confidence' | 'queryResults' | 'children' | 'createdAt' | 'updatedAt'>
+    hypothesis: Omit<
+      InvestigationHypothesis,
+      | 'id'
+      | 'status'
+      | 'evidenceStrength'
+      | 'confidence'
+      | 'queryResults'
+      | 'children'
+      | 'createdAt'
+      | 'updatedAt'
+    >
   ): InvestigationHypothesis {
     if (this.state.hypotheses.length >= this.maxHypotheses) {
       throw new Error(`Maximum hypotheses (${this.maxHypotheses}) reached`);
@@ -579,6 +596,12 @@ export class InvestigationStateMachine extends EventEmitter {
       lines.push('## Conclusion');
       lines.push(`Root Cause: ${this.state.conclusion.rootCause}`);
       lines.push(`Confidence: ${this.state.conclusion.confidence}`);
+      if (
+        this.state.conclusion.affectedServices &&
+        this.state.conclusion.affectedServices.length > 0
+      ) {
+        lines.push(`Affected Services: ${this.state.conclusion.affectedServices.join(', ')}`);
+      }
       lines.push('');
     }
 

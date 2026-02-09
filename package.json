@@ -15,6 +15,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "eval:investigate": "tsx src/eval/investigation-benchmark.ts",
+    "eval:convert:rcaeval": "tsx src/eval/rcaeval-to-fixtures.ts",
+    "eval:convert:rootly": "tsx src/eval/rootly-logs-to-fixtures.ts",
+    "eval:convert:tracerca": "tsx src/eval/tracerca-to-fixtures.ts",
+    "eval:all": "tsx src/eval/run-all-benchmarks.ts",
     "prepare": "husky"
   },
   "dependencies": {

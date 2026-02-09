@@ -1,0 +1,20 @@
+[
+  {
+    "case_id": "TR-0001",
+    "incident_id": "TRACE-001",
+    "system": "train-ticket",
+    "root_cause_service": "ts-order-service",
+    "operation": "createOrder",
+    "anomaly_type": "latency_spike",
+    "description": "Trace spans show increased latency in createOrder path with downstream retries."
+  },
+  {
+    "case_id": "TR-0002",
+    "incident_id": "TRACE-002",
+    "system": "sock-shop",
+    "root_cause_service": "orders",
+    "operation": "POST /orders",
+    "anomaly_type": "error_rate",
+    "description": "Trace errors increased after deployment in orders endpoint."
+  }
+]

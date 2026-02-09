@@ -201,12 +201,40 @@ knowledge:
 
 See [PLAN.md](./PLAN.md) for full configuration options.
 
+## Investigation Evaluation
+
+Run real-loop investigation benchmarks against fixture datasets:
+
+```bash
+npm run eval:investigate -- \
+  --fixtures examples/evals/rcaeval-fixtures.generated.json \
+  --out .runbook/evals/rcaeval-report.json
+```
+
+Run all benchmark adapters in one command (RCAEval + Rootly + TraceRCA):
+
+```bash
+npm run eval:all -- \
+  --out-dir .runbook/evals/all-benchmarks \
+  --rcaeval-input examples/evals/rcaeval-input.sample.json \
+  --tracerca-input examples/evals/tracerca-input.sample.json
+```
+
+This generates per-benchmark reports plus an aggregate summary:
+- `.runbook/evals/all-benchmarks/rcaeval-report.json`
+- `.runbook/evals/all-benchmarks/rootly-report.json`
+- `.runbook/evals/all-benchmarks/tracerca-report.json`
+- `.runbook/evals/all-benchmarks/summary.json`
+
+See [docs/INVESTIGATION_EVAL.md](./docs/INVESTIGATION_EVAL.md) for dataset setup and converter workflows.
+
 ## Recent Changes
 
 - **Knowledge Sources**: Added Confluence and Google Drive integrations for syncing runbooks and architecture docs
   - Confluence: REST API v2 with label filtering, HTML→markdown conversion
   - Google Drive: OAuth2 flow, Google Docs/Sheets export, incremental sync
   - New command: `runbook knowledge auth google` for OAuth setup
+- Investigation eval harness now supports RCAEval, Rootly logs, and TraceRCA conversion with a unified multi-benchmark runner (`npm run eval:all`) and per-benchmark JSON reports.
 - Skill execution now runs real workflows via `SkillExecutor` through the `skill` tool.
 - CLI runtime now loads dynamic skills from registry and injects knowledge retrieval into agent runtime.
 - Main config schema now includes OpsGenie under `incident.opsgenie` with validation.

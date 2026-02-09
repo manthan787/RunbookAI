@@ -81,6 +81,7 @@ export interface InvestigationOptions {
   maxIterations?: number;
   autoApproveRemediation?: boolean;
   knownServices?: string[];
+  availableTools?: string[];
   slackChannel?: string;
   availableSkills?: string[];
   fetchRelevantRunbooks?: (context: RemediationContext) => Promise<string[]>;
@@ -93,6 +94,7 @@ export interface InvestigationResult {
   id: string;
   query: string;
   rootCause?: string;
+  affectedServices?: string[];
   confidence?: 'high' | 'medium' | 'low';
   remediationPlan?: RemediationPlan;
   summary: string;
@@ -130,11 +132,15 @@ export class InvestigationOrchestrator {
   private readonly toolExecutor: ToolExecutor;
   private readonly options: InvestigationOptions;
   private readonly eventHandlers: InvestigationEventHandler[] = [];
+  private readonly availableTools?: Set<string>;
 
   constructor(llm: LLMClient, toolExecutor: ToolExecutor, options: InvestigationOptions = {}) {
     this.llm = llm;
     this.toolExecutor = toolExecutor;
     this.options = options;
+    this.availableTools = options.availableTools
+      ? new Set(options.availableTools.map((tool) => tool.trim()).filter(Boolean))
+      : undefined;
   }
 
   /**
@@ -161,6 +167,101 @@ export class InvestigationOrchestrator {
         console.error('Event handler error:', e);
       }
     }
+  }
+
+  private isToolAvailable(toolName: string): boolean {
+    if (!this.availableTools) {
+      return true;
+    }
+    return this.availableTools.has(toolName);
+  }
+
+  private buildFallbackQuery(original: CausalQuery, fallbackTool: string): CausalQuery {
+    const fallbackParams: Record<string, unknown> = {
+      ...original.parameters,
+    };
+
+    if (fallbackTool === 'cloudwatch_alarms') {
+      fallbackParams.state = 'ALARM';
+    } else if (fallbackTool === 'cloudwatch_logs' && !fallbackParams.filter_pattern) {
+      fallbackParams.filter_pattern = 'ERROR timeout exception';
+    } else if (fallbackTool === 'datadog' && !fallbackParams.action) {
+      fallbackParams.action = 'monitors';
+    } else if (fallbackTool === 'aws_query' && !fallbackParams.services) {
+      fallbackParams.services = ['ecs', 'ec2', 'rds'];
+    }
+
+    return {
+      ...original,
+      tool: fallbackTool,
+      parameters: fallbackParams,
+      expectedOutcome: `${original.expectedOutcome} (fallback via ${fallbackTool})`,
+      relevanceScore: Math.max(0.1, original.relevanceScore - 0.1),
+    };
+  }
+
+  private adaptQueryToEnvironment(query: CausalQuery): CausalQuery | null {
+    if (this.isToolAvailable(query.tool)) {
+      return query;
+    }
+
+    const fallbackOrder: Record<string, string[]> = {
+      datadog: ['cloudwatch_alarms', 'cloudwatch_logs', 'aws_query'],
+      cloudwatch_logs: ['datadog', 'aws_query'],
+      cloudwatch_alarms: ['datadog', 'aws_query'],
+      search_knowledge: ['aws_query', 'cloudwatch_logs'],
+      web_search: ['search_knowledge', 'aws_query'],
+    };
+
+    const fallbacks = fallbackOrder[query.tool] || [];
+    for (const fallbackTool of fallbacks) {
+      if (this.isToolAvailable(fallbackTool)) {
+        return this.buildFallbackQuery(query, fallbackTool);
+      }
+    }
+
+    return null;
+  }
+
+  private inferAffectedServices(
+    rootCause: string,
+    modelServices: string[] | undefined,
+    triageServices: string[] | undefined
+  ): string[] {
+    const candidates = [
+      ...(modelServices || []),
+      ...(triageServices || []),
+      ...(this.options.knownServices || []),
+    ]
+      .map((service) => service.trim())
+      .filter(Boolean);
+
+    const uniqueCandidates = Array.from(new Set(candidates));
+    const lowerRootCause = rootCause.toLowerCase();
+
+    const mentionedCandidates = uniqueCandidates.filter((service) => {
+      const normalized = service.toLowerCase();
+      const aliases = [
+        normalized,
+        normalized.replace(/^ts-/, ''),
+        normalized.replace(/-service$/i, ''),
+        normalized.replace(/_service$/i, ''),
+      ];
+
+      return aliases.some((alias) => alias && lowerRootCause.includes(alias));
+    });
+
+    const inferred =
+      mentionedCandidates.length > 0
+        ? mentionedCandidates
+        : modelServices && modelServices.length > 0
+          ? modelServices
+          : triageServices || [];
+
+    return Array.from(new Set(inferred.map((service) => service.trim()).filter(Boolean))).slice(
+      0,
+      10
+    );
   }
 
   private formatPromptList(items: string[], emptyMessage: string): string {
@@ -230,6 +331,7 @@ export class InvestigationOrchestrator {
         id: machine.getState().id,
         query,
         rootCause: machine.getState().conclusion?.rootCause,
+        affectedServices: machine.getState().conclusion?.affectedServices,
         confidence: machine.getState().conclusion?.confidence,
         remediationPlan: machine.getState().remediationPlan,
         summary: machine.getSummary(),
@@ -316,14 +418,25 @@ export class InvestigationOrchestrator {
     }
 
     // Try to gather some initial context from tools
-    try {
-      // Get recent alerts/alarms
-      const alarms = await this.toolExecutor.execute('cloudwatch_alarms', { state: 'ALARM' });
-      if (alarms) {
-        contextParts.push(`Active Alarms: ${JSON.stringify(alarms)}`);
+    const triageSources: Array<{ tool: string; params: Record<string, unknown>; label: string }> = [
+      { tool: 'cloudwatch_alarms', params: { state: 'ALARM' }, label: 'Active Alarms' },
+      { tool: 'datadog', params: { action: 'monitors' }, label: 'Triggered Monitors' },
+      { tool: 'aws_query', params: { services: ['cloudwatch'] }, label: 'Cloud Provider Status' },
+    ];
+
+    for (const source of triageSources) {
+      if (!this.isToolAvailable(source.tool)) {
+        continue;
       }
-    } catch (e) {
-      // Ignore tool errors during triage
+      try {
+        const result = await this.toolExecutor.execute(source.tool, source.params);
+        if (result) {
+          contextParts.push(`${source.label}: ${JSON.stringify(result)}`);
+          break;
+        }
+      } catch {
+        // Try next fallback source
+      }
     }
 
     return contextParts.join('\n\n');
@@ -431,16 +544,25 @@ export class InvestigationOrchestrator {
 
     // Execute each query
     for (const query of refinedQueries) {
-      this.emit({ type: 'query_executing', query });
+      const runnableQuery = this.adaptQueryToEnvironment(query);
+      if (!runnableQuery) {
+        results.set(query.id, { error: `No compatible tool available for ${query.tool}` });
+        continue;
+      }
+
+      this.emit({ type: 'query_executing', query: runnableQuery });
 
       try {
-        const result = await this.toolExecutor.execute(query.tool, query.parameters);
-        results.set(query.id, result);
-        machine.recordQueryResult(hypothesis.id, query.id, result);
+        const result = await this.toolExecutor.execute(
+          runnableQuery.tool,
+          runnableQuery.parameters
+        );
+        results.set(runnableQuery.id, result);
+        machine.recordQueryResult(hypothesis.id, runnableQuery.id, result);
 
-        this.emit({ type: 'query_complete', query, result });
+        this.emit({ type: 'query_complete', query: runnableQuery, result });
       } catch (error) {
-        results.set(query.id, { error: String(error) });
+        results.set(runnableQuery.id, { error: String(error) });
       }
     }
 
@@ -524,6 +646,15 @@ export class InvestigationOrchestrator {
     // Use the actual confirmed hypothesis ID
     if (confirmedHypothesis) {
       conclusionInput.confirmedHypothesisId = confirmedHypothesis.id;
+    }
+
+    const inferredServices = this.inferAffectedServices(
+      conclusionInput.rootCause,
+      conclusionInput.affectedServices,
+      machine.getState().triage?.affectedServices
+    );
+    if (inferredServices.length > 0) {
+      conclusionInput.affectedServices = inferredServices;
     }
 
     const conclusion = toConclusionResult(conclusionInput);
