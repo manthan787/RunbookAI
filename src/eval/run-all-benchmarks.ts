@@ -6,6 +6,7 @@ interface Args {
   outDir: string;
   limit?: number;
   offline: boolean;
+  setup: boolean;
   benchmarks?: string[];
   rcaevalInput?: string;
   tracercaInput?: string;
@@ -45,6 +46,7 @@ function parseArgs(argv: string[]): Args {
   const args: Args = {
     outDir: resolve('.runbook/evals/all-benchmarks'),
     offline: false,
+    setup: true,
     rootlyLimitPerDataset: 5,
   };
 
@@ -64,6 +66,8 @@ function parseArgs(argv: string[]): Args {
       }
     } else if (token === '--offline') {
       args.offline = true;
+    } else if (token === '--no-setup') {
+      args.setup = false;
     } else if (token === '--benchmarks') {
       const value = rest.shift();
       if (value) {
@@ -180,13 +184,58 @@ async function runSingleBenchmark(opts: {
   if (name === 'rootly') {
     const apacheLog = resolve(cwd, 'examples/evals/datasets/logs-dataset/apache/apache_error.log');
     const opensshLog = resolve(cwd, 'examples/evals/datasets/logs-dataset/openssh/openssh.log');
+    const fallbackFixtures = resolve(cwd, 'examples/evals/rootly-logs-fixtures.generated.json');
 
     if (!(await exists(apacheLog)) || !(await exists(opensshLog))) {
+      if (!(await exists(fallbackFixtures))) {
+        return {
+          benchmark: name,
+          status: 'skipped',
+          reason:
+            'Rootly dataset logs not found and no fallback fixtures found at examples/evals/rootly-logs-fixtures.generated.json.',
+        };
+      }
+
+      logs.push(
+        `Using fallback fixtures: ${fallbackFixtures} (dataset logs missing at ${resolve(cwd, 'examples/evals/datasets/logs-dataset')})`
+      );
+      const benchCmd = [
+        'node',
+        '--import',
+        'tsx',
+        'src/eval/investigation-benchmark.ts',
+        '--fixtures',
+        fallbackFixtures,
+        '--out',
+        reportPath,
+        ...(offline ? ['--offline'] : []),
+        ...(limit ? ['--limit', String(limit)] : []),
+      ];
+      const benchCode = await run(benchCmd);
+
+      if (!(await exists(reportPath))) {
+        return {
+          benchmark: name,
+          status: 'failed',
+          reportPath,
+          reason: 'Benchmark did not produce report file',
+          commandLog: logs.join('\n'),
+        };
+      }
+
+      const report = await loadBenchmarkReport(reportPath);
+      const passRate = report.totalCases > 0 ? report.passedCases / report.totalCases : 0;
       return {
         benchmark: name,
-        status: 'skipped',
-        reason:
-          'Rootly dataset logs not found. Clone Rootly logs dataset into examples/evals/datasets/logs-dataset.',
+        status: benchCode === 0 ? 'passed' : 'failed',
+        fixturesPath: fallbackFixtures,
+        reportPath,
+        totalCases: report.totalCases,
+        passedCases: report.passedCases,
+        failedCases: report.failedCases,
+        averageOverallScore: report.averageOverallScore,
+        passRate,
+        commandLog: logs.join('\n'),
       };
     }
 
@@ -216,12 +265,13 @@ async function runSingleBenchmark(opts: {
   }
 
   if (name === 'tracerca') {
-    const input = opts.tracercaInput;
-    if (!input || !(await exists(input))) {
+    const input = opts.tracercaInput || resolve(cwd, 'examples/evals/tracerca-input.sample.json');
+    if (!(await exists(input))) {
       return {
         benchmark: name,
         status: 'skipped',
-        reason: 'TraceRCA input not provided/found. Use --tracerca-input <json|jsonl|csv|tsv>.',
+        reason:
+          'TraceRCA input not found. Provide --tracerca-input <json|jsonl|csv|tsv> or add examples/evals/tracerca-input.sample.json.',
       };
     }
 
@@ -306,6 +356,31 @@ async function main() {
       : benchmarkOrder;
 
   await mkdir(args.outDir, { recursive: true });
+
+  if (args.setup) {
+    const setupLogPath = resolve(args.outDir, 'dataset-setup.log');
+    const setupCmd = [
+      'node',
+      '--import',
+      'tsx',
+      'src/eval/setup-datasets.ts',
+      '--datasets',
+      selected.join(','),
+      '--out',
+      resolve(args.outDir, 'dataset-setup.json'),
+    ];
+    const { code, output } = await runCommand(setupCmd, cwd);
+    await writeFile(setupLogPath, output, 'utf-8');
+
+    if (code !== 0) {
+      console.warn(
+        'Dataset setup completed with warnings. Continuing with available local inputs/fallback fixtures.'
+      );
+      console.warn(`Setup logs: ${setupLogPath}`);
+    } else {
+      console.log('Dataset setup complete');
+    }
+  }
 
   const results: RunResult[] = [];
   for (const benchmark of selected) {

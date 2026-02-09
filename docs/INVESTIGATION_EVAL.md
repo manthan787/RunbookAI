@@ -12,6 +12,7 @@ This document defines a practical benchmark loop for the `runbook investigate` a
 
 - Runner: `src/eval/investigation-benchmark.ts`
 - Scoring: `src/eval/scoring.ts`
+- Dataset bootstrap: `src/eval/setup-datasets.ts`
 - RCAEval converter: `src/eval/rcaeval-to-fixtures.ts`
 - Rootly logs converter: `src/eval/rootly-logs-to-fixtures.ts`
 - TraceRCA converter: `src/eval/tracerca-to-fixtures.ts`
@@ -134,9 +135,19 @@ npm run eval:all -- \
   --limit 5
 ```
 
+`eval:all` automatically runs dataset bootstrap first. It attempts to clone required public
+repositories into `examples/evals/datasets/` and then continues the benchmark run.
+
+Manual bootstrap only:
+
+```bash
+npm run eval:setup -- --datasets rcaeval,rootly,tracerca
+```
+
 Useful options:
 
 - `--offline`: run benchmark scoring from fixture `mockResult` where available
+- `--no-setup`: skip automatic dataset bootstrap
 - `--benchmarks rcaeval,rootly,tracerca`: run selected benchmarks only
 - `--rcaeval-input <path>`: custom RCAEval source file
 - `--tracerca-input <path>`: TraceRCA source file (`.json/.jsonl/.csv/.tsv`)
@@ -148,6 +159,8 @@ Outputs:
 - `.runbook/evals/all-benchmarks/rootly-report.json`
 - `.runbook/evals/all-benchmarks/tracerca-report.json`
 - `.runbook/evals/all-benchmarks/summary.json`
+- `.runbook/evals/all-benchmarks/dataset-setup.json`
+- `.runbook/evals/all-benchmarks/dataset-setup.log`
 
 ## Open datasets (recommended)
 
