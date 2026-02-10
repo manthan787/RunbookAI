@@ -21,6 +21,8 @@
     "eval:convert:rootly": "tsx src/eval/rootly-logs-to-fixtures.ts",
     "eval:convert:tracerca": "tsx src/eval/tracerca-to-fixtures.ts",
     "eval:all": "tsx src/eval/run-all-benchmarks.ts",
+    "demo:setup": "bash scripts/demo/setup-yc-demo.sh",
+    "demo:cleanup": "bash scripts/demo/cleanup-yc-demo.sh",
     "prepare": "husky"
   },
   "dependencies": {
