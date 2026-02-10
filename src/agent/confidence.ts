@@ -138,3 +138,201 @@ export const CONFIDENCE_DESCRIPTIONS: Record<ConfidenceLevel, string> = {
   medium: 'Medium confidence - Evidence supports this conclusion but some uncertainty remains',
   low: 'Low confidence - Limited evidence, consider additional investigation',
 };
+
+// ============================================================================
+// Confidence Visualization Utilities
+// ============================================================================
+
+export interface ConfidenceThresholds {
+  high: number;
+  medium: number;
+}
+
+const DEFAULT_THRESHOLDS: ConfidenceThresholds = {
+  high: 70,
+  medium: 40,
+};
+
+/**
+ * Get the confidence level from a numeric value
+ */
+export function getConfidenceLevelFromValue(
+  value: number,
+  thresholds: ConfidenceThresholds = DEFAULT_THRESHOLDS
+): ConfidenceLevel {
+  if (value >= thresholds.high) return 'high';
+  if (value >= thresholds.medium) return 'medium';
+  return 'low';
+}
+
+/**
+ * Format confidence as a text bar for non-TTY output
+ *
+ * Example output: "████████░░ 82% (High)"
+ */
+export function formatConfidenceText(
+  value: number,
+  options: {
+    width?: number;
+    showLabel?: boolean;
+    showPercentage?: boolean;
+    thresholds?: ConfidenceThresholds;
+  } = {}
+): string {
+  const {
+    width = 10,
+    showLabel = true,
+    showPercentage = true,
+    thresholds = DEFAULT_THRESHOLDS,
+  } = options;
+
+  // Clamp value between 0 and 100
+  const clampedValue = Math.max(0, Math.min(100, value));
+
+  const filled = Math.round((clampedValue / 100) * width);
+  const empty = width - filled;
+
+  const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
+  const level = getConfidenceLevelFromValue(clampedValue, thresholds);
+  const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
+
+  const parts: string[] = [bar];
+  if (showPercentage) {
+    parts.push(`${clampedValue}%`);
+  }
+  if (showLabel) {
+    parts.push(`(${levelLabel})`);
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Format confidence as a compact badge
+ *
+ * Example output: "High (85%)"
+ */
+export function formatConfidenceBadge(
+  value: number,
+  thresholds: ConfidenceThresholds = DEFAULT_THRESHOLDS
+): string {
+  const level = getConfidenceLevelFromValue(value, thresholds);
+  const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
+  return `${levelLabel} (${value}%)`;
+}
+
+/**
+ * Get color for confidence level (for terminal/UI output)
+ */
+export function getConfidenceColor(
+  value: number,
+  thresholds: ConfidenceThresholds = DEFAULT_THRESHOLDS
+): 'green' | 'yellow' | 'red' {
+  const level = getConfidenceLevelFromValue(value, thresholds);
+  switch (level) {
+    case 'high':
+      return 'green';
+    case 'medium':
+      return 'yellow';
+    case 'low':
+      return 'red';
+  }
+}
+
+/**
+ * Format confidence for markdown output
+ *
+ * Example output: "**High** (85%) ████████░░"
+ */
+export function formatConfidenceMarkdown(
+  value: number,
+  options: {
+    width?: number;
+    thresholds?: ConfidenceThresholds;
+  } = {}
+): string {
+  const { width = 10, thresholds = DEFAULT_THRESHOLDS } = options;
+
+  const clampedValue = Math.max(0, Math.min(100, value));
+  const filled = Math.round((clampedValue / 100) * width);
+  const empty = width - filled;
+
+  const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
+  const level = getConfidenceLevelFromValue(clampedValue, thresholds);
+  const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
+
+  return `**${levelLabel}** (${clampedValue}%) ${bar}`;
+}
+
+/**
+ * Parse a confidence percentage from text
+ *
+ * Handles formats like "85%", "85", "high", "High (85%)"
+ */
+export function parseConfidenceValue(text: string): number | null {
+  // Try to extract percentage
+  const percentMatch = text.match(/(\d+)%?/);
+  if (percentMatch) {
+    const value = parseInt(percentMatch[1], 10);
+    if (value >= 0 && value <= 100) {
+      return value;
+    }
+  }
+
+  // Try to interpret level words
+  const lower = text.toLowerCase().trim();
+  if (lower === 'high' || lower.includes('high')) return 85;
+  if (lower === 'medium' || lower.includes('medium')) return 55;
+  if (lower === 'low' || lower.includes('low')) return 25;
+
+  return null;
+}
+
+/**
+ * Calculate aggregate confidence from multiple sources
+ */
+export function aggregateConfidence(values: number[], weights?: number[]): number {
+  if (values.length === 0) return 0;
+
+  if (weights && weights.length === values.length) {
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    if (totalWeight === 0) return 0;
+    const weightedSum = values.reduce((sum, v, i) => sum + v * weights[i], 0);
+    return Math.round(weightedSum / totalWeight);
+  }
+
+  // Simple average
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  return Math.round(sum / values.length);
+}
+
+/**
+ * Describe what the confidence level means in context
+ */
+export function describeConfidenceInContext(
+  value: number,
+  context: 'investigation' | 'hypothesis' | 'general' = 'general'
+): string {
+  const level = getConfidenceLevelFromValue(value);
+
+  const descriptions: Record<typeof context, Record<ConfidenceLevel, string>> = {
+    investigation: {
+      high: 'Strong evidence supports this conclusion. Multiple data points corroborate the finding.',
+      medium:
+        'Evidence supports this conclusion with some uncertainty. Additional validation recommended.',
+      low: 'Limited evidence available. This is a preliminary assessment that requires further investigation.',
+    },
+    hypothesis: {
+      high: 'This hypothesis is well-supported by gathered evidence.',
+      medium: 'This hypothesis has partial support. Some evidence is inconclusive.',
+      low: 'This hypothesis needs more evidence to be confirmed or refuted.',
+    },
+    general: {
+      high: 'High confidence in this result.',
+      medium: 'Moderate confidence in this result.',
+      low: 'Low confidence in this result.',
+    },
+  };
+
+  return descriptions[context][level];
+}

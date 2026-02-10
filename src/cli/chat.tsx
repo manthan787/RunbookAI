@@ -41,7 +41,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system' | 'header';
   content: string;
   timestamp: Date;
-  toolCalls?: Array<{ tool: string; duration: number }>;
+  toolCalls?: Array<{ tool: string; duration: number; fromCache?: boolean }>;
   config?: LoadedConfig;
 }
 
@@ -201,10 +201,11 @@ export function ChatInterface() {
 
     // Process with agent
     setState({ status: 'thinking', currentTool: null, error: null });
-    const toolCalls: Array<{ tool: string; duration: number }> = [];
+    const toolCalls: Array<{ tool: string; duration: number; fromCache?: boolean }> = [];
 
     try {
       let answer = '';
+      let streamingAnswer = '';
       const promptWithContext = memoryContext
         ? `${memoryContext}\n\n## Current User Query\n${trimmedInput}`
         : trimmedInput;
@@ -218,7 +219,15 @@ export function ChatInterface() {
             setState({ status: 'tool', currentTool: event.tool, error: null });
             break;
           case 'tool_end':
-            toolCalls.push({ tool: event.tool, duration: event.durationMs });
+            toolCalls.push({
+              tool: event.tool,
+              duration: event.durationMs,
+              fromCache: event.fromCache,
+            });
+            break;
+          case 'answer_chunk':
+            // Handle streaming chunks
+            streamingAnswer += event.content;
             break;
           case 'done':
             answer = event.answer;
@@ -397,7 +406,10 @@ Example queries:
                 {message.toolCalls && message.toolCalls.length > 0 && (
                   <Box marginLeft={2}>
                     <Text color="gray" dimColor>
-                      ⚡ {message.toolCalls.map((t) => `${t.tool} (${t.duration}ms)`).join(' → ')}
+                      {'\u26A1'}{' '}
+                      {message.toolCalls
+                        .map((t) => `${t.tool} (${t.duration}ms)${t.fromCache ? ' [cached]' : ''}`)
+                        .join(' \u2192 ')}
                     </Text>
                   </Box>
                 )}
