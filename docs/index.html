@@ -3,332 +3,786 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>RunbookAI - AI-Powered SRE Assistant</title>
-    <meta name="description" content="AI-powered SRE assistant that investigates incidents, executes runbooks, and manages cloud infrastructure using hypothesis-driven methodology." />
-    <meta name="keywords" content="SRE, incident response, AI agent, runbooks, kubernetes, AWS, PagerDuty, OpsGenie, DevOps, on-call" />
+    <title>RunbookAI - AI-Powered Incident Response for Modern SRE Teams</title>
+    <meta name="description" content="Automate incident investigation with AI. RunbookAI uses hypothesis-driven reasoning to diagnose issues, execute runbooks, and resolve incidents faster. Built for on-call engineers and SRE teams." />
+    <meta name="keywords" content="SRE, incident response, AI agent, runbooks, kubernetes, AWS, PagerDuty, OpsGenie, DevOps, on-call, incident management, automation, AIOps" />
     <link rel="canonical" href="https://runbook-agent.github.io/RunbookAI/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://runbook-agent.github.io/RunbookAI/" />
-    <meta property="og:title" content="RunbookAI - AI-Powered SRE Assistant" />
-    <meta property="og:description" content="Investigate incidents, execute runbooks, and manage cloud infrastructure with hypothesis-driven AI." />
+    <meta property="og:title" content="RunbookAI - AI-Powered Incident Response" />
+    <meta property="og:description" content="Automate incident investigation with AI. Hypothesis-driven reasoning that diagnoses issues and resolves incidents faster." />
+    <meta property="og:image" content="https://runbook-agent.github.io/RunbookAI/assets/og-image.png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="RunbookAI - AI-Powered SRE Assistant" />
-    <meta name="twitter:description" content="Investigate incidents, execute runbooks, and manage cloud infrastructure with hypothesis-driven AI." />
+    <meta name="twitter:title" content="RunbookAI - AI-Powered Incident Response" />
+    <meta name="twitter:description" content="Automate incident investigation with AI. Hypothesis-driven reasoning that diagnoses issues and resolves incidents faster." />
 
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Background Effects -->
+    <div class="bg-noise"></div>
+    <div class="bg-gradient"></div>
     <div class="bg-grid"></div>
-    <div class="bg-glow"></div>
 
-    <nav>
-      <a href="./" class="logo">
-        <img src="assets/favicon.svg" alt="" />
-        RunbookAI
-      </a>
-      <div class="nav-links">
-        <a href="getting-started.html">Docs</a>
-        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
-        <a href="getting-started.html" class="btn btn-primary btn-sm">Get Started</a>
+    <!-- Navigation -->
+    <nav class="nav">
+      <div class="nav-container">
+        <a href="./" class="nav-logo">
+          <svg class="nav-logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
+            <path d="M8 12h16M8 16h12M8 20h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="20" r="4" fill="white" fill-opacity="0.9"/>
+            <defs>
+              <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#8B5CF6"/>
+                <stop offset="1" stop-color="#6366F1"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>RunbookAI</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="docs.html" class="nav-link">Documentation</a>
+          <a href="docs.html#integrations" class="nav-link">Integrations</a>
+          <a href="https://github.com/Runbook-Agent/RunbookAI" class="nav-link" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+          <a href="docs.html#installation" class="nav-cta">Get Started</a>
+        </div>
+
+        <button class="nav-mobile-toggle" aria-label="Toggle menu" onclick="toggleMobileMenu()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
       </div>
     </nav>
 
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="docs.html">Documentation</a>
+      <a href="docs.html#integrations">Integrations</a>
+      <a href="https://github.com/Runbook-Agent/RunbookAI" target="_blank" rel="noopener">GitHub</a>
+      <a href="docs.html#installation" class="nav-cta">Get Started</a>
+    </div>
+
     <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-badge fade-in">
-        <span>&#x1F916;</span> AI-Powered &bull; Hypothesis-Driven &bull; Safety-First
-      </div>
-
-      <h1 class="fade-in delay-1">
-        Your AI SRE,<br /><span>Always On Call</span>
-      </h1>
-
-      <p class="subtitle fade-in delay-2">
-        Investigate incidents, execute runbooks, and manage cloud infrastructure using
-        a research-first, hypothesis-driven methodology. Like having your best SRE available 24/7.
-      </p>
-
-      <!-- Value Props -->
-      <div class="value-props fade-in delay-2">
-        <div class="value-prop">
-          <div class="icon green">&#x2713;</div>
-          Forms & tests hypotheses
+    <header class="hero">
+      <div class="hero-container">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          <span>Open Source</span>
+          <span class="hero-badge-separator"></span>
+          <span>AI-Powered</span>
+          <span class="hero-badge-separator"></span>
+          <span>Production Ready</span>
         </div>
-        <div class="value-prop">
-          <div class="icon purple">&#x2713;</div>
-          Learns from your runbooks
-        </div>
-        <div class="value-prop">
-          <div class="icon blue">&#x2713;</div>
-          Mutations require approval
-        </div>
-      </div>
 
-      <div class="hero-buttons fade-in delay-3">
-        <a href="getting-started.html" class="btn btn-primary">
-          Get Started
-          <span>&#x2192;</span>
-        </a>
-        <a href="https://github.com/Runbook-Agent/RunbookAI" class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          Star on GitHub
-        </a>
-      </div>
+        <h1 class="hero-title">
+          <span class="hero-title-line">Your AI SRE,</span>
+          <span class="hero-title-gradient">Always On Call</span>
+        </h1>
 
-      <!-- Terminal Demo -->
-      <div class="terminal-demo fade-in delay-3">
-        <div class="code-block">
-          <div class="code-header">
-            <div class="code-dot red"></div>
-            <div class="code-dot yellow"></div>
-            <div class="code-dot green"></div>
-            <span class="terminal-title">Terminal</span>
+        <p class="hero-subtitle">
+          Automate incident investigation with hypothesis-driven AI. RunbookAI diagnoses issues,
+          executes runbooks, and suggests remediations - so your team can focus on shipping, not firefighting.
+        </p>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-value">24/7</span>
+            <span class="hero-stat-label">Coverage</span>
           </div>
-          <pre><code><span class="prompt">$</span> <span class="command">runbook investigate PD-12345</span>
+          <div class="hero-stat-divider"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-value">100%</span>
+            <span class="hero-stat-label">Audit Trail</span>
+          </div>
+        </div>
 
-<span class="output"><span class="success">&#x2713;</span> Gathering incident context...</span>
-<span class="output"><span class="success">&#x2713;</span> Searching knowledge base...</span>
+        <div class="hero-actions">
+          <a href="docs.html" class="btn btn-primary btn-lg">
+            <span>Read the Docs</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="https://github.com/Runbook-Agent/RunbookAI" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            <span>Star on GitHub</span>
+          </a>
+        </div>
 
-<span class="label">Forming hypotheses:</span>
-<span class="hypothesis">  H1: Database connection pool exhaustion (0.7)</span>
-<span class="hypothesis">  H2: Recent deployment caused memory leak (0.5)</span>
+        <!-- Terminal Demo -->
+        <div class="hero-terminal" id="demo">
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="terminal-dot terminal-dot-red"></span>
+                <span class="terminal-dot terminal-dot-yellow"></span>
+                <span class="terminal-dot terminal-dot-green"></span>
+              </div>
+              <span class="terminal-title">runbook investigate PD-12345</span>
+              <button class="terminal-copy" data-copy="runbook investigate PD-12345" onclick="copyToClipboard(this)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+              </button>
+            </div>
+            <div class="terminal-body">
+              <div class="terminal-line">
+                <span class="terminal-prompt">$</span>
+                <span class="terminal-command">runbook investigate PD-12345</span>
+              </div>
+              <div class="terminal-output">
+                <div class="terminal-line terminal-animate" style="--delay: 0.5s">
+                  <span class="terminal-success">&#10003;</span> Gathering incident context from PagerDuty...
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 1s">
+                  <span class="terminal-success">&#10003;</span> Searching knowledge base for similar incidents...
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 1.5s">
+                  <span class="terminal-success">&#10003;</span> Found 3 relevant runbooks
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 2s">
+                  <span class="terminal-label">Forming hypotheses:</span>
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.3s">
+                  <span class="terminal-hypothesis">H1:</span> Database connection pool exhaustion
+                  <span class="terminal-confidence">(0.72)</span>
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.5s">
+                  <span class="terminal-hypothesis">H2:</span> Recent deployment memory leak
+                  <span class="terminal-confidence">(0.54)</span>
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.7s">
+                  <span class="terminal-hypothesis">H3:</span> Upstream API timeout cascade
+                  <span class="terminal-confidence">(0.31)</span>
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 3.2s">
+                  <span class="terminal-info">&#9654;</span> Testing H1: Querying CloudWatch metrics...
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 3.7s">
+                  <span class="terminal-evidence">Evidence:</span>
+                  <span class="terminal-strong">STRONG</span> - Connection count 340% above baseline
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 4.2s">
+                  <span class="terminal-info">&#9654;</span> Branching deeper on H1...
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 4.7s">
+                  <span class="terminal-evidence">Evidence:</span>
+                  <span class="terminal-strong">STRONG</span> - Traffic spike at 14:32 UTC
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 5.2s">
+                  <span class="terminal-rootcause">ROOT CAUSE IDENTIFIED</span>
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 5.5s">
+                  <span class="terminal-white">Database connection exhaustion due to unexpected traffic spike</span>
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 5.8s">
+                  <span class="terminal-label">Confidence:</span>
+                  <span class="terminal-high">HIGH (0.94)</span>
+                </div>
+                <div class="terminal-line terminal-animate" style="--delay: 6.1s">
+                  <span class="terminal-label">Suggested remediation:</span>
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.4s">
+                  <span class="terminal-remediation">1.</span> Scale RDS read replicas
+                  <span class="terminal-approval">(requires approval)</span>
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.6s">
+                  <span class="terminal-remediation">2.</span> Increase connection pool limit to 200
+                </div>
+                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.8s">
+                  <span class="terminal-remediation">3.</span> Enable connection queuing in pgbouncer
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
 
-<span class="output"><span class="success">&#x2713;</span> Testing H1: Querying CloudWatch metrics...</span>
-<span class="evidence">  Evidence: <span class="strong">STRONG</span> - Connection count 3x normal</span>
-
-<span class="output"><span class="success">&#x2713;</span> Branching deeper on H1...</span>
-<span class="evidence">  Evidence: <span class="strong">STRONG</span> - Traffic spike at 14:32 UTC</span>
-
-<span class="root-cause">ROOT CAUSE:</span> <span class="white">Database connection exhaustion due to traffic spike</span>
-<span class="confidence">Confidence:</span> <span class="high">HIGH (0.92)</span>
-
-<span class="label">Suggested remediation:</span>
-<span class="remediation">  1. Scale RDS read replicas (requires approval)</span>
-<span class="remediation">  2. Increase connection pool limit</span>
-<span class="remediation">  3. Enable connection queuing</span></code></pre>
+    <!-- Trusted By Section -->
+    <section class="trusted">
+      <div class="container">
+        <p class="trusted-label">Built for teams running</p>
+        <div class="trusted-logos">
+          <!-- Kubernetes - Official helm wheel logo -->
+          <div class="trusted-logo">
+            <svg viewBox="0 0 32 32" fill="currentColor" width="28" height="28">
+              <path d="M15.9.476a2.14 2.14 0 0 0-.823.218L3.932 6.01c-.582.277-1.005.804-1.15 1.432L.054 19.373c-.13.56-.025 1.147.292 1.63l6.503 10.146c.345.537.903.9 1.53.994l12.03 1.588c.63.094 1.27-.106 1.773-.544l9.37-8.09c.477-.41.755-1.008.755-1.64V11.03c0-.604-.255-1.18-.7-1.588L22.674 1.17a2.131 2.131 0 0 0-1.552-.672h-.003L15.9.476zm.076 4.794l.006.004c.04.003.076.01.108.023.016.003.027.01.04.016l.026.017.016.007c.016.01.026.02.04.03l.063.06.022.024c.013.013.023.03.033.047l.014.026c.01.02.016.04.02.056.003.01.003.023.003.037v3.19c0 .05-.003.092-.016.13-.036.09-.092.16-.166.21h-.003l-2.266 1.467-.02.01-.012.007-.01.003-.012.006-.006.003c-.01.006-.02.01-.03.01a.252.252 0 0 1-.073.01h-.01l-.032-.007-.01-.003-.016-.003-.016-.007-.006-.003a.252.252 0 0 1-.046-.023l-.056-.043c-.01-.006-.016-.016-.026-.023-.003-.003-.006-.01-.006-.013l-.01-.013-.013-.02a.197.197 0 0 1-.013-.026l-.01-.02-.003-.02-.006-.023-.003-.03V6.89l.003-.026c.003-.01.003-.016.006-.024l.003-.02.007-.016c.003-.01.01-.02.013-.027.003-.01.006-.02.013-.027.006-.01.01-.016.016-.026l.016-.02.01-.013.016-.016.01-.013.012-.01.01-.01.016-.01.02-.013.02-.01.012-.006.02-.01.023-.006.01-.003L16 4.91l.016-.003c.02-.003.036-.006.053-.003.01-.003.02 0 .03.003h.016l.02.003h.006l.02.006.016.003c.01.003.016.01.023.01l.007.003c.01.003.02.01.03.016l.003.003c.013.01.03.02.04.034l.003.003a.51.51 0 0 1 .06.07l.01.013c.006.01.01.016.013.027a.235.235 0 0 1 .016.03l.007.012c.003.013.01.023.013.037l.006.02.004.022.003.018c.003.01.003.023.003.03v.027l.003.013v3.18h.003zm-4.88 3.664l.043-.023c.04-.017.083-.027.127-.034h.01l.034-.003h.003c.013 0 .024-.003.034 0h.03l.046.007.04.006.01.003c.01.003.022.006.03.01l.007.003.006.003c.016.007.03.013.04.02.01.003.017.006.024.01l.01.006.01.007.03.02.023.02.02.016.02.02.01.01 2.203 2.323v.003l.003.003.013.017.003.003c.03.037.053.08.066.124l.003.01c.003.012.006.02.006.03 0 .01.004.02.004.03v.01l.003.03v.032l-.003.01v.026c-.004.013-.004.026-.007.037l-.006.02-.007.02c-.003.01-.006.02-.01.026l-.006.02-.007.01-.01.02c-.003.007-.006.01-.01.017-.003.006-.006.01-.01.016l-.013.02-.013.016-.01.01-.01.016-.006.006-.01.01-.013.012-.02.017-.012.01-.01.007-.02.016-.02.01-2.597 1.68-.01.007c-.01.003-.013.006-.02.01l-.01.003-.006.003-.007.003-.02.01c-.01.003-.016.006-.024.006-.02.007-.036.014-.053.017l-.006.003c-.017.003-.034.007-.047.007l-.027.003-.03.003-.02.003h-.033l-.033-.003-.02-.003-.03-.004-.017-.003c-.01 0-.023-.003-.033-.006h-.007c-.026-.007-.053-.017-.08-.03l-.01-.003-.006-.003-.02-.01-.006-.003-.023-.013-.02-.013-.01-.006-.01-.01-.02-.013-.027-.023-.01-.01-.017-.017-.02-.023-.013-.016-.003-.003-.007-.01a.282.282 0 0 1-.05-.083l-.007-.017-.006-.023-.006-.017c-.004-.017-.007-.03-.007-.046l-.003-.017c-.003-.013-.003-.03-.003-.043v-.017l.003-.023v-.013l.003-.013.003-.02v-.01l.004-.016c.003-.013.006-.03.01-.043l.003-.013.003-.006.01-.026c.003-.01.006-.02.013-.034.003-.01.01-.016.013-.023l.01-.023L9.3 13.6l.007-.013.01-.017.02-.03.003-.003.016-.016.007-.01.003-.003c.03-.037.06-.06.096-.083l.01-.007.007-.003.033-.017.027-.01zm9.787-.003l.01.003.01.007.007.003a.34.34 0 0 1 .09.087l.023.027.003.003.01.016.007.01.003.006.01.017.01.02 1.79 2.897c.01.014.017.03.023.044l.004.013.006.01c.006.016.01.03.013.046l.003.013v.01c.004.016.004.032.007.047v.026l.003.017v.043c0 .016 0 .03-.003.044l-.003.016c-.003.016-.003.03-.006.044l-.003.01-.007.016-.003.016c-.007.017-.01.03-.017.044l-.003.003c-.01.02-.02.04-.037.057l-.006.01-.003.003-.01.013c-.006.01-.016.02-.023.03l-.01.01-.006.006-.02.02c-.01.01-.02.017-.027.023l-.007.007-.01.006-.02.013-.01.007-.006.003-.023.013-.007.003-.01.003-.023.01-.01.003c-.01.003-.02.01-.03.013l-.006.003-.02.007-.027.007-.006.003c-.02.003-.04.006-.057.006h-.007a.273.273 0 0 1-.04.004h-.063l-.023-.004-.016-.003c-.007 0-.016 0-.024-.003l-.006-.003-.027-.007-.02-.003-.006-.003c-.01-.003-.02-.007-.027-.01l-.006-.003-.017-.007-.01-.003-.02-.01-.01-.006-.013-.007-.02-.013-.01-.007-2.6-1.7c-.006 0-.006-.003-.006-.003l-.033-.024c-.01-.006-.016-.016-.023-.023l-.003-.003-.01-.01-.013-.016-.01-.017-.003-.003-.01-.01-.006-.013c-.003-.003-.006-.01-.01-.013l-.003-.01-.01-.016-.003-.007-.006-.016-.004-.01-.006-.016-.004-.023-.003-.017-.003-.02-.003-.024v-.02l-.004-.033V14.6l.003-.033.004-.03v-.007c0-.01.003-.02.003-.03l.003-.003c.003-.013.007-.027.01-.04l.004-.013.003-.01c.01-.036.026-.07.047-.1l.013-.02.003-.003.01-.013.003-.003.003-.003 2.2-2.323c.02-.02.04-.037.06-.054l.006-.003.02-.013.006-.003.01-.007.01-.007.023-.013.01-.003.017-.01.02-.006.007-.003.013-.007.013-.003.024-.007h.003a.288.288 0 0 1 .09-.01h.01l.036.003h.007c.043.007.086.02.127.037zM16 14.32c.06 0 .12.01.174.027l3.947 1.283c.09.03.17.08.235.143.1.093.17.217.195.356l.78 4.044c.02.1.015.2-.013.293-.022.073-.056.14-.1.198l-.014.02a.584.584 0 0 1-.063.07l-2.83 3.082c-.047.053-.103.096-.164.13a.587.587 0 0 1-.303.085H14.14a.587.587 0 0 1-.3-.085.58.58 0 0 1-.158-.126l-.007-.007-2.832-3.083c-.064-.07-.113-.154-.143-.244a.57.57 0 0 1-.023-.238l.003-.04.78-4.045a.565.565 0 0 1 .096-.227c.033-.047.07-.088.114-.124a.58.58 0 0 1 .22-.148l3.947-1.283c.055-.018.114-.027.174-.027zm.007 1.195l-.007.003-3.136 1.022.003.017-.003-.007-.622 3.229.01.013-.006-.01 2.256 2.456.006-.003-.003.006h2.998l-.003-.006.006.003 2.256-2.457-.006.007.01-.01-.62-3.232-.007.007.003-.013-3.136-1.022zm-.003 1.944a.733.733 0 0 1 .732.733.733.733 0 0 1-.733.732.733.733 0 0 1-.732-.732.733.733 0 0 1 .733-.733z"/>
+            </svg>
+            <span>Kubernetes</span>
+          </div>
+          <!-- AWS - Official logo with smile arrow -->
+          <div class="trusted-logo">
+            <svg viewBox="0 0 32 32" fill="currentColor" width="28" height="28">
+              <path d="M9.016 13.38c0 .396.043.717.118.951.086.235.193.491.343.769.054.086.075.171.075.247 0 .107-.064.214-.203.32l-.673.449a.506.506 0 0 1-.278.096c-.107 0-.214-.054-.32-.15a3.276 3.276 0 0 1-.384-.502 8.239 8.239 0 0 1-.33-.631c-.834.984-1.882 1.476-3.143 1.476-.898 0-1.614-.256-2.138-.769-.525-.513-.792-1.197-.792-2.052 0-.909.32-1.647.973-2.202.652-.556 1.518-.834 2.62-.834.363 0 .737.032 1.133.086.395.053.802.139 1.229.235v-.78c0-.813-.17-1.379-.502-1.71-.342-.332-.92-.492-1.742-.492-.374 0-.759.043-1.154.139-.396.096-.78.214-1.155.374-.172.075-.299.118-.374.139a.69.69 0 0 1-.139.032c-.193 0-.288-.139-.288-.427v-.524c0-.224.032-.384.086-.481a.963.963 0 0 1 .342-.278c.374-.192.823-.352 1.347-.481A6.797 6.797 0 0 1 5.744 6.5c1.272 0 2.202.289 2.8.866.588.577.887 1.454.887 2.63v3.464l.01-.08zm-4.342 1.625c.352 0 .716-.064 1.101-.193.385-.128.727-.363 1.016-.684.171-.203.299-.427.363-.684.064-.256.107-.566.107-.93v-.448a9.004 9.004 0 0 0-.984-.182 8.048 8.048 0 0 0-1.005-.064c-.716 0-1.24.139-1.593.427-.352.289-.524.695-.524 1.229 0 .502.129.877.395 1.133.257.267.631.395 1.123.395zm8.59 1.154c-.245 0-.41-.043-.502-.118-.096-.064-.171-.214-.235-.417l-2.63-8.654c-.064-.214-.096-.353-.096-.427 0-.171.085-.267.256-.267h1.027c.257 0 .427.043.513.118.096.064.16.214.224.417l1.882 7.417 1.743-7.417c.054-.214.118-.353.214-.417.096-.075.277-.118.524-.118h.834c.256 0 .427.043.523.118.096.075.171.214.214.417l1.764 7.503 1.936-7.503c.064-.214.139-.353.224-.417.097-.075.268-.118.513-.118h.973c.172 0 .268.086.268.267 0 .054-.01.107-.022.171a1.896 1.896 0 0 1-.075.267l-2.694 8.654c-.064.214-.139.353-.235.417-.096.075-.267.118-.502.118h-.898c-.256 0-.427-.043-.523-.129-.097-.085-.172-.214-.214-.427l-1.732-7.224-1.722 7.214c-.053.214-.117.352-.214.427-.096.085-.277.128-.523.128h-.898zm13.749.31c-.556 0-1.112-.064-1.657-.192-.545-.129-.97-.267-1.261-.428-.182-.096-.299-.203-.342-.299a.764.764 0 0 1-.064-.299v-.545c0-.288.107-.427.31-.427a.77.77 0 0 1 .246.043c.085.032.214.085.352.16.47.214.984.384 1.529.502.556.118 1.101.182 1.657.182.877 0 1.561-.15 2.041-.449.481-.299.727-.737.727-1.294a1.18 1.18 0 0 0-.32-.855c-.214-.235-.62-.449-1.208-.641l-1.732-.545c-.877-.278-1.529-.684-1.925-1.219-.395-.524-.598-1.112-.598-1.743 0-.502.107-.952.32-1.347.214-.395.502-.748.866-1.016.364-.278.78-.481 1.283-.631a5.485 5.485 0 0 1 1.614-.214c.279 0 .566.01.855.043.299.032.577.075.856.128.267.054.524.118.77.182.245.064.438.128.577.192.192.086.331.171.417.267.085.086.128.214.128.374v.502c0 .288-.107.438-.31.438a1.423 1.423 0 0 1-.523-.16 6.296 6.296 0 0 0-2.63-.545c-.791 0-1.42.118-1.87.363-.449.246-.678.62-.678 1.144 0 .364.128.673.395.93.267.256.759.502 1.454.727l1.7.535c.866.278 1.497.663 1.871 1.155.374.492.556 1.058.556 1.678 0 .513-.107.984-.31 1.39a3.302 3.302 0 0 1-.877 1.08c-.374.299-.823.524-1.347.684-.545.17-1.123.256-1.753.256z"/>
+              <path d="M28.635 23.353c-3.431 2.53-8.408 3.879-12.692 3.879-6.003 0-11.412-2.22-15.502-5.915-.32-.289-.032-.684.353-.459 4.41 2.566 9.872 4.11 15.512 4.11 3.804 0 7.982-.79 11.827-2.426.577-.256 1.069.374.502.812z"/>
+              <path d="M29.95 21.83c-.438-.566-2.907-.267-4.014-.139-.342.043-.385-.256-.086-.47 1.957-1.379 5.174-.984 5.548-.524.374.47-.107 3.687-1.936 5.227-.278.235-.556.107-.427-.203.417-1.026 1.347-3.325.909-3.89z"/>
+            </svg>
+            <span>AWS</span>
+          </div>
+          <!-- PagerDuty - Official logo -->
+          <div class="trusted-logo">
+            <svg viewBox="0 0 32 32" fill="currentColor" width="28" height="28">
+              <path d="M8.343 22.134h3.903V10.09c0-2.727 1.078-4.433 4.178-4.433 2.805 0 4.04 1.628 4.04 4.04v12.436h3.902V9.11c0-4.59-2.57-7.11-7.118-7.11-4.863 0-8.905 2.52-8.905 8.326v11.808zm0 7.866h3.903v-4.826H8.343v4.826z"/>
+            </svg>
+            <span>PagerDuty</span>
+          </div>
+          <!-- Slack - Official logo -->
+          <div class="trusted-logo">
+            <svg viewBox="0 0 32 32" fill="currentColor" width="28" height="28">
+              <path d="M6.723 20.218a3.36 3.36 0 0 1-3.36 3.363 3.36 3.36 0 0 1-3.363-3.363 3.362 3.362 0 0 1 3.363-3.36h3.36v3.36zm1.693 0a3.36 3.36 0 0 1 3.36-3.36 3.36 3.36 0 0 1 3.36 3.36v8.419a3.362 3.362 0 0 1-3.36 3.363 3.362 3.362 0 0 1-3.36-3.363v-8.419zM11.776 6.722a3.36 3.36 0 0 1-3.36-3.359A3.36 3.36 0 0 1 11.776 0a3.36 3.36 0 0 1 3.36 3.363v3.36h-3.36zm0 1.706a3.36 3.36 0 0 1 3.36 3.36 3.36 3.36 0 0 1-3.36 3.36H3.351A3.362 3.362 0 0 1 0 11.788a3.362 3.362 0 0 1 3.351-3.36h8.425zM25.278 11.788a3.362 3.362 0 0 1 3.36-3.36 3.362 3.362 0 0 1 3.362 3.36 3.362 3.362 0 0 1-3.362 3.36h-3.36v-3.36zm-1.693 0a3.36 3.36 0 0 1-3.36 3.36 3.36 3.36 0 0 1-3.36-3.36V3.363A3.362 3.362 0 0 1 20.224 0a3.362 3.362 0 0 1 3.361 3.363v8.425zM20.224 25.278a3.362 3.362 0 0 1 3.36 3.359A3.362 3.362 0 0 1 20.225 32a3.36 3.36 0 0 1-3.36-3.363v-3.36h3.36zm0-1.693a3.36 3.36 0 0 1-3.36-3.36 3.36 3.36 0 0 1 3.36-3.363h8.425a3.36 3.36 0 0 1 3.351 3.363 3.36 3.36 0 0 1-3.351 3.36h-8.425z"/>
+            </svg>
+            <span>Slack</span>
+          </div>
+          <!-- Datadog - Replaced CloudWatch with Datadog -->
+          <div class="trusted-logo">
+            <svg viewBox="0 0 32 32" fill="currentColor" width="28" height="28">
+              <path d="M24.229 22.062l-2.096-1.631.248-.453.014-.027c.193-.35.28-.594.302-.84l.008-.107-.013-.054-.018-.054-.024-.04-.04-.04-.054-.028-.054-.013-.4-.014a7.72 7.72 0 0 0-.618.047l-.672.04c-.4.028-.805.067-1.206.12l-.026.014-.041.013c-.04.027-.067.054-.094.094l-.027.04-.013.054-.014.054v.053l.014.054.013.054.014.04.026.04.027.027c.134.174.335.388.578.628l.08.08-.067.321-.094.453-.12.565-.067.296-1.137-.792-.013-.013-.041-.027c-.03-.013-.067-.04-.107-.04h-.08l-.054.013-.04.027-.04.027-.027.04-.027.054-.014.04-.013.053-.013.054.013.094.014.054.04.053c.15.35.398.792.765 1.312l-.765.765c-.872-.309-1.784-.63-2.55-.458-.483.107-.832.415-1.031.765a1.69 1.69 0 0 0-.201.658l-.014.107v.107l.014.12.013.107.014.107c.147.63.523 1.273 1.098 1.863-.054.497.013.805.067.858.013.04.013.054.027.067l.04.04.04.04.04.027.04.027.04.013h.094l.054-.013a3.085 3.085 0 0 0 .698-.523c.591.309 1.272.511 2.016.538h.134l.107-.013a3.77 3.77 0 0 0 2.016-.845c1.166-.94 1.79-2.359 1.764-4.021l.014-.041 1.87-1.408a.255.255 0 0 0 .107-.187.247.247 0 0 0-.067-.201zm-8.016 1.631c.067-.201.201-.362.375-.47.268-.146.618-.146.98-.04l-.698.698a2.497 2.497 0 0 1-.644-.148l-.013-.04zm4.33 3.265a2.92 2.92 0 0 1-1.543.645h-.08l-.094.013h-.04c-.645-.013-1.232-.241-1.717-.618l1.972-1.972c.147.188.308.362.497.523.215.18.471.321.752.415l-.08.04c-.255.403-.457.712-.617.872l-.05.082zm.886-1.408a3.014 3.014 0 0 1-.63-.578 2.816 2.816 0 0 1-.51-.738l.806-.806c.013.416.094.832.268 1.233l.08.174-.014.715zm.47-.43l.014-.645c.014-.014.014-.027.027-.04l.014-.027.013-.054.014-.067v-.12l-.014-.054-.027-.04-.026-.054-.041-.054-.054-.04a4.403 4.403 0 0 0-.47-1.3l.188-.9c.228-.014.51-.054.845-.08l.645-.041.255-.014.255-.013h.013l-.013.174a2.097 2.097 0 0 1-.148.525l-.026.053-.041.08-.094.174-.054.107-.335.59-.054.094-.04.04-.04.014h-.055l-.026.013-.027.027-.027.027-.013.04-.014.04v.04l.014.054.013.027.054.067.08.054.147.08.147.081.255.147c.335.188.698.403 1.004.618l-2.23 1.683-.014.014-.054-.858z"/>
+              <path d="M26.406 14.743c-.067-.201-.174-.429-.295-.618l-5.053-8.628a2.163 2.163 0 0 0-.349-.47c-.469-.483-1.125-.712-1.797-.618a1.82 1.82 0 0 0-.63.188c-.496.255-.845.725-.979 1.287L15.56 14.07l-.537-.242-1.958-8.803a1.795 1.795 0 0 0-.578-1.004 2.018 2.018 0 0 0-.618-.362c-.215-.08-.443-.134-.685-.147a2.22 2.22 0 0 0-.752.067c-.255.067-.483.174-.685.322-.201.147-.375.322-.496.523l-6.08 8.843c-.12.174-.227.375-.308.591a2.47 2.47 0 0 0-.147.725v.054l-.014.08v.08l.014.08v.04a2.24 2.24 0 0 0 .107.578c.014.054.027.094.04.147l.067.174 4.29 8.695a2.36 2.36 0 0 0 .135.242c.013.04.04.067.053.107.014.027.014.04.027.054.201.294.47.55.778.725.335.201.712.308 1.111.308.335 0 .671-.08.98-.228l4.585-2.096c.416-.054.805-.067 1.152-.027.309.027.591.08.832.147.241-.228.496-.483.725-.765.053-.054.094-.12.147-.174.134-.188.268-.375.375-.578a3.59 3.59 0 0 0 .322-.805c.094-.335.134-.685.12-1.044a2.98 2.98 0 0 0-.026-.322l.443-.335.201-.16.255-.188 1.717-1.313c.832-.658 1.704-1.407 2.363-2.173.282-.335.497-.578.618-.739l.04-.04.04-.054.067-.067.014-.013.04-.04a2.55 2.55 0 0 0 .255-.43 2.52 2.52 0 0 0 .215-1.03 2.39 2.39 0 0 0-.147-.86zm-1.044.953l-.013.013c-.107.12-.255.309-.51.578-.591.698-1.423 1.407-2.215 2.042l-1.717 1.326-.281.208-.416.315-.12.107.027.268c.013.147.027.295.027.43 0 .161-.014.321-.054.482l-.04.174-.041.148-.053.134-.04.107-.04.08-.055.108-.067.107c-.08.12-.174.228-.282.335l-.147.16.322.322c-.215-.08-.47-.147-.752-.188a4.76 4.76 0 0 0-1.514.04l-4.585 2.096a.718.718 0 0 1-.308.067.712.712 0 0 1-.356-.094.806.806 0 0 1-.228-.201l-.013-.027-.04-.04-.054-.094-4.29-8.709-.04-.08a.712.712 0 0 1-.04-.188V14.5l.013-.08v-.04l.013-.054a.712.712 0 0 1 .04-.188c.028-.08.068-.16.121-.228l6.08-8.856a.699.699 0 0 1 .362-.282c.054-.027.12-.04.174-.054a.793.793 0 0 1 .228-.013c.094.013.188.04.268.08a.631.631 0 0 1 .188.12.525.525 0 0 1 .148.255l2.188 9.835.737.335a.81.81 0 0 0 .175.054l.08.027h.08l.08.013h.08l.08-.013.08-.014.067-.013.041-.014.04-.027.04-.027.027-.027.027-.04.013-.027.014-.04.013-.04 2.055-8.574c.04-.174.12-.322.228-.43a.637.637 0 0 1 .188-.147.699.699 0 0 1 .201-.067c.08-.014.16-.014.228 0 .242.04.457.188.578.402l5.053 8.629.054.08c.067.12.107.201.134.295a.99.99 0 0 1 .04.268.726.726 0 0 1-.054.282.672.672 0 0 1-.107.174z"/>
+            </svg>
+            <span>Datadog</span>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- How It Works Section -->
-    <section class="section">
-      <div class="section-header">
-        <h2>How RunbookAI Thinks</h2>
-        <p>A structured, hypothesis-driven approach to incident investigation</p>
-      </div>
+    <section class="how-it-works" id="how-it-works">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">How It Works</span>
+          <h2 class="section-title">Hypothesis-Driven Investigation</h2>
+          <p class="section-subtitle">
+            Unlike traditional monitoring that alerts on symptoms, RunbookAI thinks like your best engineer -
+            forming hypotheses, gathering evidence, and systematically narrowing down to root cause.
+          </p>
+        </div>
 
-      <div class="flow-diagram">
-        <div class="flow-step">
-          <div class="flow-number">1</div>
-          <h4>Gather Context</h4>
-          <p>Pulls incident details, recent deployments, and searches your knowledge base for relevant runbooks</p>
-        </div>
-        <div class="flow-arrow">&#x2192;</div>
-        <div class="flow-step">
-          <div class="flow-number">2</div>
-          <h4>Form Hypotheses</h4>
-          <p>Creates ranked hypotheses based on symptoms, past incidents, and organizational knowledge</p>
-        </div>
-        <div class="flow-arrow">&#x2192;</div>
-        <div class="flow-step">
-          <div class="flow-number">3</div>
-          <h4>Test & Branch</h4>
-          <p>Runs targeted queries to gather evidence. Branches deeper on strong evidence, prunes dead ends</p>
-        </div>
-        <div class="flow-arrow">&#x2192;</div>
-        <div class="flow-step">
-          <div class="flow-number">4</div>
-          <h4>Root Cause</h4>
-          <p>Identifies root cause with confidence level and suggests remediation with approval gates</p>
+        <div class="workflow">
+          <div class="workflow-step">
+            <div class="workflow-step-number">1</div>
+            <div class="workflow-step-content">
+              <div class="workflow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                  <path d="M11 8v6M8 11h6"/>
+                </svg>
+              </div>
+              <h3>Gather Context</h3>
+              <p>Pulls incident details from PagerDuty/OpsGenie, queries recent deployments, and searches your knowledge base for relevant runbooks and past incidents.</p>
+            </div>
+          </div>
+
+          <div class="workflow-connector">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+
+          <div class="workflow-step">
+            <div class="workflow-step-number">2</div>
+            <div class="workflow-step-content">
+              <div class="workflow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </div>
+              <h3>Form Hypotheses</h3>
+              <p>Creates ranked hypotheses based on symptoms, organizational knowledge, and infrastructure patterns. Each hypothesis gets a probability score.</p>
+            </div>
+          </div>
+
+          <div class="workflow-connector">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+
+          <div class="workflow-step">
+            <div class="workflow-step-number">3</div>
+            <div class="workflow-step-content">
+              <div class="workflow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <h3>Test &amp; Branch</h3>
+              <p>Runs targeted queries against CloudWatch, Kubernetes, and your infrastructure. Branches deeper on strong evidence, prunes dead ends quickly.</p>
+            </div>
+          </div>
+
+          <div class="workflow-connector">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+
+          <div class="workflow-step">
+            <div class="workflow-step-number">4</div>
+            <div class="workflow-step-content">
+              <div class="workflow-step-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <h3>Root Cause</h3>
+              <p>Identifies root cause with a confidence level, suggests prioritized remediation steps, and can auto-execute approved runbooks with safety gates.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Features Section -->
-    <section class="section">
-      <div class="section-header">
-        <h2>Built for Production SRE</h2>
-        <p>Everything you need for real incident response</p>
-      </div>
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Features</span>
+          <h2 class="section-title">Built for Production SRE</h2>
+          <p class="section-subtitle">
+            Everything you need for real incident response - from investigation to remediation, with safety built in.
+          </p>
+        </div>
 
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon purple">&#x1F50D;</div>
-          <h3>Hypothesis-Driven Investigation</h3>
-          <p>Forms and tests hypotheses about incidents. Branches on strong evidence, prunes dead ends. Never gets stuck in loops.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon blue">&#x1F4DA;</div>
-          <h3>Knowledge Integration</h3>
-          <p>Indexes your runbooks, post-mortems, and architecture docs. Learns from your organization's tribal knowledge.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon green">&#x1F512;</div>
-          <h3>Safety First</h3>
-          <p>All mutations require explicit approval with rollback commands. Full audit trail of every action.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon orange">&#x2601;</div>
-          <h3>Cloud Native</h3>
-          <p>First-class AWS and Kubernetes support. Read cluster status, query CloudWatch, inspect deployments.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon purple">&#x1F4DF;</div>
-          <h3>Incident Providers</h3>
-          <p>PagerDuty and OpsGenie integration. Pull incident context, update status, and post findings.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon blue">&#x1F527;</div>
-          <h3>Dynamic Skills</h3>
-          <p>Built-in and custom skills executed step-by-step with approval hooks. Extend with your own workflows.</p>
+        <div class="features-grid">
+          <div class="feature-card feature-card-large">
+            <div class="feature-card-icon feature-card-icon-purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <h3>Knowledge Integration</h3>
+            <p>Indexes your runbooks, post-mortems, and architecture docs from Confluence, Google Drive, or local files. Learns from your organization's tribal knowledge and past incidents.</p>
+            <div class="feature-card-detail">
+              <code>runbook knowledge sync</code>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <h3>Safety First</h3>
+            <p>All mutations require explicit approval with rollback commands. Full audit trail of every action, hypothesis, and decision.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <h3>Cloud Native</h3>
+            <p>First-class AWS and Kubernetes support. Query EC2, RDS, CloudWatch, ECS, EKS, pods, deployments, and more.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+            <h3>Incident Providers</h3>
+            <p>PagerDuty and OpsGenie integration out of the box. Pull incident context, update status, and post findings automatically.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            <h3>Dynamic Skills</h3>
+            <p>Built-in and custom skills executed step-by-step with approval hooks. Extend with your own workflows and automations.</p>
+          </div>
+
+          <div class="feature-card feature-card-large">
+            <div class="feature-card-icon feature-card-icon-pink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <h3>Slack Gateway</h3>
+            <p>Mention @runbookAI in your alert channels. Socket Mode for local development, Events API for production. Threaded conversations keep context organized.</p>
+            <div class="feature-card-detail">
+              <code>runbook slack-gateway --mode socket</code>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Use Cases Section -->
-    <section class="section">
-      <div class="section-header">
-        <h2>What Can RunbookAI Do?</h2>
-        <p>Common workflows SRE teams automate</p>
-      </div>
-
-      <div class="use-cases-grid">
-        <div class="use-case-card">
-          <div class="trigger">&#x1F6A8; PagerDuty alert</div>
-          <h3>Investigate Production Incidents</h3>
-          <p class="description">Agent pulls incident context, searches knowledge base for similar issues, forms hypotheses, and gathers evidence from AWS/K8s.</p>
-          <div class="outcome">
-            <span class="check">&#x2713;</span>
-            Root cause identified with confidence score and remediation steps
-          </div>
+    <section class="use-cases">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Use Cases</span>
+          <h2 class="section-title">What Can RunbookAI Do?</h2>
+          <p class="section-subtitle">
+            From investigating production incidents to answering infrastructure questions - automate the repetitive parts of on-call.
+          </p>
         </div>
 
-        <div class="use-case-card">
-          <div class="trigger">&#x1F4AC; Natural language query</div>
-          <h3>Ask About Infrastructure</h3>
-          <p class="description">"What EC2 instances are running in prod?" "Show me pods with restart loops" "Who owns the payments service?"</p>
-          <div class="outcome">
-            <span class="check">&#x2713;</span>
-            Instant answers without digging through consoles
+        <div class="use-cases-grid">
+          <div class="use-case-card">
+            <div class="use-case-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              PagerDuty Alert
+            </div>
+            <h3>Investigate Production Incidents</h3>
+            <p>Agent pulls incident context, searches for similar past issues, forms hypotheses, and gathers evidence from your infrastructure automatically.</p>
+            <div class="use-case-outcome">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Root cause identified with confidence score and remediation steps
+            </div>
           </div>
-        </div>
 
-        <div class="use-case-card">
-          <div class="trigger">&#x2699; Skill execution</div>
-          <h3>Execute Runbooks Automatically</h3>
-          <p class="description">Skills are step-by-step workflows loaded from your runbooks. Agent executes them with approval gates for mutations.</p>
-          <div class="outcome">
-            <span class="check">&#x2713;</span>
-            Consistent remediation following your documented procedures
+          <div class="use-case-card">
+            <div class="use-case-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Natural Language Query
+            </div>
+            <h3>Ask About Infrastructure</h3>
+            <p>"What EC2 instances are running in prod?" "Show me pods with restart loops" "Who owns the payments service?" Get instant answers.</p>
+            <div class="use-case-outcome">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Instant answers without digging through consoles
+            </div>
           </div>
-        </div>
 
-        <div class="use-case-card">
-          <div class="trigger">&#x1F4CA; Kubernetes query</div>
-          <h3>Cluster Health Checks</h3>
-          <p class="description">Get cluster status, list deployments, check node health, view recent events, find resource hogs.</p>
-          <div class="outcome">
-            <span class="check">&#x2713;</span>
-            Read-only queries safe to run anytime
+          <div class="use-case-card">
+            <div class="use-case-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Skill Execution
+            </div>
+            <h3>Execute Runbooks Automatically</h3>
+            <p>Skills are step-by-step workflows loaded from your runbooks. Agent executes them with approval gates for any mutations.</p>
+            <div class="use-case-outcome">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Consistent remediation following your documented procedures
+            </div>
+          </div>
+
+          <div class="use-case-card">
+            <div class="use-case-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+              Kubernetes Query
+            </div>
+            <h3>Cluster Health Checks</h3>
+            <p>Get cluster status, list deployments, check node health, view recent events, find resource hogs - all with natural language.</p>
+            <div class="use-case-outcome">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Read-only queries safe to run anytime
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Integrations Section -->
-    <section class="section">
-      <div class="section-header">
-        <h2>Integrations</h2>
-        <p>Connect to your existing infrastructure and tools</p>
-      </div>
+    <section class="integrations" id="integrations">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Integrations</span>
+          <h2 class="section-title">Connect Your Stack</h2>
+          <p class="section-subtitle">
+            Out-of-the-box integrations with your existing infrastructure, incident management, and knowledge systems.
+          </p>
+        </div>
 
-      <div class="integrations-grid">
-        <div class="integration-badge"><span>&#x2601;</span> AWS</div>
-        <div class="integration-badge"><span>&#x2638;</span> Kubernetes</div>
-        <div class="integration-badge"><span>&#x1F4DF;</span> PagerDuty</div>
-        <div class="integration-badge"><span>&#x1F514;</span> OpsGenie</div>
-        <div class="integration-badge"><span>&#x1F4AC;</span> Slack</div>
-        <div class="integration-badge"><span>&#x1F4D6;</span> Confluence</div>
-        <div class="integration-badge"><span>&#x1F4C1;</span> Google Drive</div>
-        <div class="integration-badge"><span>&#x1F4CA;</span> CloudWatch</div>
-        <div class="integration-badge"><span>&#x1F4C2;</span> Filesystem</div>
-      </div>
+        <div class="integrations-categories">
+          <div class="integration-category">
+            <h3>Infrastructure</h3>
+            <div class="integration-list">
+              <div class="integration-item">
+                <span class="integration-name">AWS</span>
+                <span class="integration-desc">EC2, RDS, CloudWatch, ECS, EKS, Lambda</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">Kubernetes</span>
+                <span class="integration-desc">Pods, deployments, nodes, events, metrics</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">CloudWatch</span>
+                <span class="integration-desc">Metrics, logs, alarms, insights</span>
+              </div>
+            </div>
+          </div>
 
-      <div class="knowledge-sources">
-        <h3>Knowledge Sources</h3>
-        <p>Sync runbooks and docs from multiple sources:</p>
-        <ul>
-          <li><strong>Filesystem</strong> - Watch local markdown files</li>
-          <li><strong>Confluence</strong> - REST API with label filtering</li>
-          <li><strong>Google Drive</strong> - OAuth2 with folder sync</li>
-        </ul>
+          <div class="integration-category">
+            <h3>Incident Management</h3>
+            <div class="integration-list">
+              <div class="integration-item">
+                <span class="integration-name">PagerDuty</span>
+                <span class="integration-desc">Incidents, alerts, escalations</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">OpsGenie</span>
+                <span class="integration-desc">Alerts, on-call schedules</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">Slack</span>
+                <span class="integration-desc">Mentions, alerts, notifications</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="integration-category">
+            <h3>Knowledge Sources</h3>
+            <div class="integration-list">
+              <div class="integration-item">
+                <span class="integration-name">Confluence</span>
+                <span class="integration-desc">Pages, runbooks, postmortems</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">Google Drive</span>
+                <span class="integration-desc">Docs, sheets, folders</span>
+              </div>
+              <div class="integration-item">
+                <span class="integration-name">Filesystem</span>
+                <span class="integration-desc">Local markdown, watch mode</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- Quick Start Section -->
-    <section class="section">
-      <div class="section-header">
-        <h2>Quick Start</h2>
-        <p>Up and running in 5 minutes</p>
-      </div>
+    <section class="quickstart" id="quickstart">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Quick Start</span>
+          <h2 class="section-title">Up and Running in Minutes</h2>
+          <p class="section-subtitle">
+            Get started with RunbookAI in just a few commands. No complex setup required.
+          </p>
+        </div>
 
-      <div class="quick-start">
-        <div class="code-block">
-          <div class="code-header">
-            <div class="code-dot red"></div>
-            <div class="code-dot yellow"></div>
-            <div class="code-dot green"></div>
-            <span class="terminal-title">Installation</span>
-            <button class="copy-btn" onclick="copyCode(this, 'install-code')">Copy</button>
+        <div class="quickstart-steps">
+          <div class="quickstart-step">
+            <div class="quickstart-step-header">
+              <span class="quickstart-step-number">1</span>
+              <span class="quickstart-step-title">Install</span>
+            </div>
+            <div class="terminal terminal-compact">
+              <div class="terminal-header">
+                <div class="terminal-dots">
+                  <span class="terminal-dot terminal-dot-red"></span>
+                  <span class="terminal-dot terminal-dot-yellow"></span>
+                  <span class="terminal-dot terminal-dot-green"></span>
+                </div>
+                <button class="terminal-copy" data-copy="git clone https://github.com/Runbook-Agent/RunbookAI.git && cd RunbookAI && bun install" onclick="copyToClipboard(this)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">git clone https://github.com/Runbook-Agent/RunbookAI.git</span>
+                </div>
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">cd RunbookAI && bun install</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <pre><code id="install-code"><span class="comment"># Clone and install</span>
-git clone https://github.com/Runbook-Agent/RunbookAI.git
-cd RunbookAI
-bun install
 
-<span class="comment"># Configure</span>
-mkdir -p .runbook
-cp examples/config.yaml .runbook/config.yaml
-export ANTHROPIC_API_KEY=your-api-key
+          <div class="quickstart-step">
+            <div class="quickstart-step-header">
+              <span class="quickstart-step-number">2</span>
+              <span class="quickstart-step-title">Configure</span>
+            </div>
+            <div class="terminal terminal-compact">
+              <div class="terminal-header">
+                <div class="terminal-dots">
+                  <span class="terminal-dot terminal-dot-red"></span>
+                  <span class="terminal-dot terminal-dot-yellow"></span>
+                  <span class="terminal-dot terminal-dot-green"></span>
+                </div>
+                <button class="terminal-copy" data-copy="mkdir -p .runbook && cp examples/config.yaml .runbook/config.yaml && export ANTHROPIC_API_KEY=your-api-key" onclick="copyToClipboard(this)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">mkdir -p .runbook</span>
+                </div>
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">cp examples/config.yaml .runbook/config.yaml</span>
+                </div>
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">export ANTHROPIC_API_KEY=your-api-key</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-<span class="comment"># Run your first query</span>
-bun run dev ask "What EC2 instances are running?"
+          <div class="quickstart-step">
+            <div class="quickstart-step-header">
+              <span class="quickstart-step-number">3</span>
+              <span class="quickstart-step-title">Run</span>
+            </div>
+            <div class="terminal terminal-compact">
+              <div class="terminal-header">
+                <div class="terminal-dots">
+                  <span class="terminal-dot terminal-dot-red"></span>
+                  <span class="terminal-dot terminal-dot-yellow"></span>
+                  <span class="terminal-dot terminal-dot-green"></span>
+                </div>
+                <button class="terminal-copy" data-copy="bun run dev ask &quot;What EC2 instances are running?&quot;" onclick="copyToClipboard(this)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line">
+                  <span class="terminal-prompt">$</span>
+                  <span class="terminal-command">bun run dev ask "What EC2 instances are running?"</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-<span class="comment"># Investigate an incident</span>
-bun run dev investigate PD-12345</code></pre>
+        <div class="quickstart-cta">
+          <a href="docs.html" class="btn btn-primary btn-lg">
+            Read Full Documentation
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
         </div>
       </div>
     </section>
 
     <!-- CTA Section -->
-    <section class="cta-section">
-      <h2>Ready to Automate Incident Response?</h2>
-      <p>Join SRE teams using AI to investigate incidents faster and more consistently.</p>
-      <div class="hero-buttons">
-        <a href="getting-started.html" class="btn btn-primary">
-          Get Started
-          <span>&#x2192;</span>
-        </a>
-        <a href="https://github.com/Runbook-Agent/RunbookAI" class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          View on GitHub
-        </a>
+    <section class="cta">
+      <div class="container">
+        <div class="cta-content">
+          <h2>Ready to Automate Incident Response?</h2>
+          <p>Join SRE teams using AI to investigate incidents faster and more consistently. Open source, self-hosted, no vendor lock-in.</p>
+          <div class="cta-actions">
+            <a href="docs.html#installation" class="btn btn-primary btn-lg">
+              Get Started Free
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
       </div>
     </section>
 
-    <footer>
-      <p>
-        <a href="https://github.com/Runbook-Agent/RunbookAI">GitHub</a>
-        &nbsp;&middot;&nbsp;
-        <a href="getting-started.html">Documentation</a>
-        &nbsp;&middot;&nbsp;
-        MIT License
-      </p>
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <a href="./" class="footer-logo">
+              <svg class="footer-logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="32" height="32" rx="8" fill="url(#footer-logo-gradient)"/>
+                <path d="M8 12h16M8 16h12M8 20h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="24" cy="20" r="4" fill="white" fill-opacity="0.9"/>
+                <defs>
+                  <linearGradient id="footer-logo-gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#8B5CF6"/>
+                    <stop offset="1" stop-color="#6366F1"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>RunbookAI</span>
+            </a>
+            <p>AI-powered incident response for modern SRE teams.</p>
+          </div>
+
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Product</h4>
+              <a href="docs.html">Documentation</a>
+              <a href="#features">Features</a>
+              <a href="#integrations">Integrations</a>
+              <a href="#quickstart">Quick Start</a>
+            </div>
+            <div class="footer-column">
+              <h4>Resources</h4>
+              <a href="docs.html#configuration">Configuration</a>
+              <a href="docs.html#commands">Commands</a>
+              <a href="docs.html#knowledge">Knowledge Sources</a>
+              <a href="docs.html#skills">Skills</a>
+            </div>
+            <div class="footer-column">
+              <h4>Community</h4>
+              <a href="https://github.com/Runbook-Agent/RunbookAI" target="_blank" rel="noopener">GitHub</a>
+              <a href="https://github.com/Runbook-Agent/RunbookAI/issues" target="_blank" rel="noopener">Issues</a>
+              <a href="https://github.com/Runbook-Agent/RunbookAI/discussions" target="_blank" rel="noopener">Discussions</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p>Released under the MIT License.</p>
+          <p>Built with care for on-call engineers everywhere.</p>
+        </div>
+      </div>
     </footer>
 
     <script src="script.js"></script>

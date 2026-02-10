@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Documentation - RunbookAI</title>
+    <meta name="description" content="Complete documentation for RunbookAI - installation, configuration, commands, integrations, and best practices." />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Background Effects -->
+    <div class="bg-noise"></div>
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+      <div class="nav-container">
+        <a href="./" class="nav-logo">
+          <svg class="nav-logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="url(#logo-gradient-docs)"/>
+            <path d="M8 12h16M8 16h12M8 20h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="20" r="4" fill="white" fill-opacity="0.9"/>
+            <defs>
+              <linearGradient id="logo-gradient-docs" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#8B5CF6"/>
+                <stop offset="1" stop-color="#6366F1"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>RunbookAI</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="docs.html" class="nav-link">Documentation</a>
+          <a href="docs.html#integrations" class="nav-link">Integrations</a>
+          <a href="https://github.com/Runbook-Agent/RunbookAI" class="nav-link" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+          <a href="#installation" class="nav-cta">Get Started</a>
+        </div>
+
+        <button class="nav-mobile-toggle" aria-label="Toggle menu" onclick="toggleMobileMenu()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="./">Home</a>
+      <a href="#installation">Installation</a>
+      <a href="#configuration">Configuration</a>
+      <a href="#commands">Commands</a>
+      <a href="#integrations">Integrations</a>
+    </div>
+
+    <!-- Documentation Layout -->
+    <div class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Getting Started</div>
+          <ul class="sidebar-nav">
+            <li><a href="#installation" class="active">Installation</a></li>
+            <li><a href="#configuration">Configuration</a></li>
+            <li><a href="#first-query">First Query</a></li>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Commands</div>
+          <ul class="sidebar-nav">
+            <li><a href="#ask">runbook ask</a></li>
+            <li><a href="#investigate">runbook investigate</a></li>
+            <li><a href="#knowledge">runbook knowledge</a></li>
+            <li><a href="#status">runbook status</a></li>
+            <li><a href="#slack-gateway">runbook slack-gateway</a></li>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Integrations</div>
+          <ul class="sidebar-nav">
+            <li><a href="#aws">AWS</a></li>
+            <li><a href="#kubernetes">Kubernetes</a></li>
+            <li><a href="#pagerduty">PagerDuty</a></li>
+            <li><a href="#opsgenie">OpsGenie</a></li>
+            <li><a href="#slack">Slack</a></li>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Knowledge Sources</div>
+          <ul class="sidebar-nav">
+            <li><a href="#filesystem">Filesystem</a></li>
+            <li><a href="#confluence">Confluence</a></li>
+            <li><a href="#google-drive">Google Drive</a></li>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Advanced</div>
+          <ul class="sidebar-nav">
+            <li><a href="#skills">Skills</a></li>
+            <li><a href="#runbooks">Writing Runbooks</a></li>
+            <li><a href="#evaluation">Evaluation</a></li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="docs-content">
+        <h1>Documentation</h1>
+        <p>Complete guide to installing, configuring, and using RunbookAI for AI-powered incident response.</p>
+
+        <!-- Installation -->
+        <h2 id="installation">Installation</h2>
+        <p>RunbookAI requires <strong>Node.js 20+</strong> or <strong>Bun</strong>. We recommend using Bun for faster installation and runtime performance.</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Clone the repository
+git clone https://github.com/Runbook-Agent/RunbookAI.git
+cd RunbookAI
+
+# Install dependencies with Bun (recommended)
+bun install
+
+# Or with npm
+npm install</code></pre>
+        </div>
+
+        <h3>Requirements</h3>
+        <ul>
+          <li><strong>Node.js 20+</strong> or <strong>Bun 1.0+</strong></li>
+          <li><strong>Anthropic API Key</strong> for Claude LLM</li>
+          <li><strong>AWS credentials</strong> (for AWS integration)</li>
+          <li><strong>kubectl</strong> configured (for Kubernetes integration)</li>
+        </ul>
+
+        <!-- Configuration -->
+        <h2 id="configuration">Configuration</h2>
+        <p>Create a <code>.runbook</code> directory in your project root and add your configuration file:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>mkdir -p .runbook
+cp examples/config.yaml .runbook/config.yaml</code></pre>
+        </div>
+
+        <p>Set your Anthropic API key as an environment variable:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>export ANTHROPIC_API_KEY=your-api-key</code></pre>
+        </div>
+
+        <h3>Full Configuration Reference</h3>
+        <p>Here's a complete configuration example with all available options:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+providers:
+  aws:
+    enabled: true
+    regions: [us-east-1, us-west-2]
+  kubernetes:
+    enabled: true
+
+incident:
+  pagerduty:
+    enabled: true
+    apiKey: ${PAGERDUTY_API_KEY}
+  opsgenie:
+    enabled: false
+    apiKey: ${OPSGENIE_API_KEY}
+  slack:
+    enabled: false
+    botToken: ${SLACK_BOT_TOKEN}
+    appToken: ${SLACK_APP_TOKEN}
+    signingSecret: ${SLACK_SIGNING_SECRET}
+    events:
+      enabled: false
+      mode: socket
+      port: 3001
+      alertChannels: [C01234567]
+      allowedUsers: [U01234567]
+      requireThreadedMentions: true
+
+knowledge:
+  sources:
+    - type: filesystem
+      path: .runbook/runbooks/
+      watch: true
+
+    # Confluence Cloud/Server
+    - type: confluence
+      baseUrl: https://mycompany.atlassian.net
+      spaceKey: SRE
+      labels: [runbook, postmortem]
+      auth:
+        email: ${CONFLUENCE_EMAIL}
+        apiToken: ${CONFLUENCE_API_TOKEN}
+
+    # Google Drive (requires OAuth)
+    - type: google_drive
+      folderIds: ['your-folder-id']
+      clientId: ${GOOGLE_CLIENT_ID}
+      clientSecret: ${GOOGLE_CLIENT_SECRET}
+      refreshToken: ${GOOGLE_REFRESH_TOKEN}
+      includeSubfolders: true</code></pre>
+        </div>
+
+        <!-- First Query -->
+        <h2 id="first-query">Your First Query</h2>
+        <p>Test your installation by running a simple infrastructure query:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Ask about your infrastructure
+bun run dev ask "What EC2 instances are running in prod?"
+
+# Check Kubernetes cluster status
+bun run dev ask "Show cluster status and any warning events"
+
+# Get a status overview
+bun run dev status</code></pre>
+        </div>
+
+        <div class="info-box info-box-tip">
+          <div class="info-box-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Tip
+          </div>
+          <p>RunbookAI uses read-only queries by default. Any mutations require explicit approval with rollback commands provided.</p>
+        </div>
+
+        <!-- Commands -->
+        <h2 id="commands">Commands</h2>
+
+        <h3 id="ask">runbook ask</h3>
+        <p>Ask questions about your infrastructure in natural language. The agent will query AWS, Kubernetes, and your knowledge base to provide answers.</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>runbook ask "What's the status of the checkout-api service?"
+runbook ask "Show me RDS instances with high CPU"
+runbook ask "Who owns the payments service?"
+runbook ask "List pods with restart loops in the last hour"</code></pre>
+        </div>
+
+        <h3 id="investigate">runbook investigate</h3>
+        <p>Perform a hypothesis-driven investigation of a PagerDuty or OpsGenie incident. The agent uses a structured approach to identify root causes.</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Basic investigation
+runbook investigate PD-12345
+
+# Investigation with auto-remediation
+runbook investigate PD-12345 --auto-remediate</code></pre>
+        </div>
+
+        <p>The investigation workflow:</p>
+        <ol>
+          <li><strong>Gather Context</strong> - Pulls incident details, recent deployments, and relevant runbooks</li>
+          <li><strong>Form Hypotheses</strong> - Creates ranked hypotheses based on symptoms and organizational knowledge</li>
+          <li><strong>Test Hypotheses</strong> - Runs targeted queries against infrastructure to gather evidence</li>
+          <li><strong>Branch or Prune</strong> - Branches deeper on strong evidence, prunes dead ends</li>
+          <li><strong>Root Cause</strong> - Identifies root cause with confidence level</li>
+          <li><strong>Remediation</strong> - Suggests remediation steps with approval gates for mutations</li>
+        </ol>
+
+        <h3 id="knowledge">runbook knowledge</h3>
+        <p>Manage the knowledge base that powers contextual understanding:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Sync knowledge from all configured sources
+runbook knowledge sync
+
+# Search the knowledge base
+runbook knowledge search "redis connection timeout"
+
+# Authenticate with Google Drive
+runbook knowledge auth google</code></pre>
+        </div>
+
+        <h3 id="status">runbook status</h3>
+        <p>Get a quick overview of your infrastructure health across all configured providers.</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>runbook status</code></pre>
+        </div>
+
+        <h3 id="slack-gateway">runbook slack-gateway</h3>
+        <p>Start the Slack gateway for @runbookAI mentions in alert channels:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Local development (Socket Mode)
+runbook slack-gateway --mode socket
+
+# Production (HTTP Events API)
+runbook slack-gateway --mode http --port 3001</code></pre>
+        </div>
+
+        <!-- Integrations -->
+        <h2 id="integrations">Integrations</h2>
+
+        <h3 id="aws">AWS</h3>
+        <p>RunbookAI provides read-only access to AWS services including EC2, RDS, ECS, EKS, Lambda, CloudWatch, and more.</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>providers:
+  aws:
+    enabled: true
+    regions: [us-east-1, us-west-2, eu-west-1]</code></pre>
+        </div>
+
+        <p>Ensure your AWS credentials are configured via:</p>
+        <ul>
+          <li>Environment variables (<code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>)</li>
+          <li>AWS credentials file (<code>~/.aws/credentials</code>)</li>
+          <li>IAM role (when running on EC2/ECS)</li>
+        </ul>
+
+        <h4>Available AWS Operations</h4>
+        <ul>
+          <li><strong>EC2</strong> - Describe instances, security groups, volumes</li>
+          <li><strong>RDS</strong> - Describe instances, clusters, snapshots</li>
+          <li><strong>ECS</strong> - Describe clusters, services, tasks</li>
+          <li><strong>EKS</strong> - Describe clusters, node groups</li>
+          <li><strong>Lambda</strong> - Describe functions, invocations</li>
+          <li><strong>CloudWatch</strong> - Query metrics, logs, alarms</li>
+          <li><strong>DynamoDB</strong> - Describe tables, scan items</li>
+          <li><strong>S3</strong> - List buckets, objects</li>
+        </ul>
+
+        <h3 id="kubernetes">Kubernetes</h3>
+        <p>Query Kubernetes clusters using your configured kubeconfig with read-only operations:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>providers:
+  kubernetes:
+    enabled: true</code></pre>
+        </div>
+
+        <h4>Available Kubernetes Operations</h4>
+        <ul>
+          <li><code>status</code> - Cluster status overview</li>
+          <li><code>contexts</code> - List available contexts</li>
+          <li><code>namespaces</code> - List namespaces</li>
+          <li><code>pods</code> - List pods with status</li>
+          <li><code>deployments</code> - List deployments</li>
+          <li><code>nodes</code> - Node health and capacity</li>
+          <li><code>events</code> - Recent cluster events</li>
+          <li><code>top_pods</code> - Resource usage by pod</li>
+          <li><code>top_nodes</code> - Resource usage by node</li>
+        </ul>
+
+        <h3 id="pagerduty">PagerDuty</h3>
+        <p>Integrate with PagerDuty to pull incident context during investigations:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>incident:
+  pagerduty:
+    enabled: true
+    apiKey: ${PAGERDUTY_API_KEY}</code></pre>
+        </div>
+
+        <p>Create a read-only API key in PagerDuty under Configuration &rarr; API Access Keys.</p>
+
+        <h3 id="opsgenie">OpsGenie</h3>
+        <p>Integrate with OpsGenie for alert and incident context:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>incident:
+  opsgenie:
+    enabled: true
+    apiKey: ${OPSGENIE_API_KEY}</code></pre>
+        </div>
+
+        <h3 id="slack">Slack</h3>
+        <p>Enable the Slack gateway to respond to @runbookAI mentions in alert channels:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>incident:
+  slack:
+    enabled: true
+    botToken: ${SLACK_BOT_TOKEN}
+    appToken: ${SLACK_APP_TOKEN}
+    signingSecret: ${SLACK_SIGNING_SECRET}
+    events:
+      enabled: true
+      mode: socket          # 'socket' for dev, 'http' for production
+      port: 3001
+      alertChannels: [C01234567]
+      allowedUsers: [U01234567]
+      requireThreadedMentions: true</code></pre>
+        </div>
+
+        <p>See the <a href="https://github.com/Runbook-Agent/RunbookAI/blob/main/docs/SLACK_GATEWAY.md">Slack Gateway Guide</a> for detailed setup instructions.</p>
+
+        <!-- Knowledge Sources -->
+        <h2 id="knowledge-sources">Knowledge Sources</h2>
+
+        <h3 id="filesystem">Filesystem</h3>
+        <p>Sync runbooks and documentation from local markdown files:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>knowledge:
+  sources:
+    - type: filesystem
+      path: .runbook/runbooks/
+      watch: true    # Auto-sync on file changes</code></pre>
+        </div>
+
+        <h3 id="confluence">Confluence</h3>
+        <p>Sync runbooks from Confluence Cloud or Server:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>knowledge:
+  sources:
+    - type: confluence
+      baseUrl: https://mycompany.atlassian.net
+      spaceKey: SRE
+      labels: [runbook, postmortem]
+      auth:
+        email: ${CONFLUENCE_EMAIL}
+        apiToken: ${CONFLUENCE_API_TOKEN}</code></pre>
+        </div>
+
+        <h3 id="google-drive">Google Drive</h3>
+        <p>Sync documents from Google Drive folders:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/config.yaml</div>
+          <pre><code>knowledge:
+  sources:
+    - type: google_drive
+      folderIds: ['your-folder-id']
+      clientId: ${GOOGLE_CLIENT_ID}
+      clientSecret: ${GOOGLE_CLIENT_SECRET}
+      refreshToken: ${GOOGLE_REFRESH_TOKEN}
+      includeSubfolders: true</code></pre>
+        </div>
+
+        <p>Run the OAuth authentication flow:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Set up OAuth credentials first
+export GOOGLE_CLIENT_ID=your-client-id
+export GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Run authentication flow
+runbook knowledge auth google</code></pre>
+        </div>
+
+        <!-- Advanced -->
+        <h2 id="skills">Skills</h2>
+        <p>Skills are step-by-step workflows that can be executed with approval gates. RunbookAI includes built-in skills and supports custom skills.</p>
+
+        <h4>Built-in Skills</h4>
+        <ul>
+          <li><code>investigate-incident</code> - Full incident investigation workflow</li>
+          <li><code>deploy-service</code> - Deploy a service to production</li>
+          <li><code>scale-service</code> - Scale a service up or down</li>
+          <li><code>rollback-deployment</code> - Rollback to a previous deployment</li>
+          <li><code>troubleshoot-service</code> - General service troubleshooting</li>
+          <li><code>cost-analysis</code> - Analyze infrastructure costs</li>
+          <li><code>security-audit</code> - Security posture check</li>
+          <li><code>investigate-cost-spike</code> - Investigate unexpected cost increases</li>
+        </ul>
+
+        <h2 id="runbooks">Writing Runbooks</h2>
+        <p>Create markdown files with frontmatter to help RunbookAI understand your runbooks:</p>
+
+        <div class="config-block">
+          <div class="config-header">.runbook/runbooks/redis-connection.md</div>
+          <pre><code>---
+type: runbook
+services: [checkout-api, cart-service]
+symptoms:
+  - "Redis connection timeout"
+  - "Connection pool exhausted"
+severity: sev2
+---
+
+# Redis Connection Exhaustion
+
+## Symptoms
+- Connection timeouts in checkout-api logs
+- Connection pool exhausted errors
+- Increased latency in checkout flow
+
+## Quick Diagnosis
+1. Check Redis connection count: `redis-cli info clients`
+2. Check client memory usage: `redis-cli info memory`
+3. Review recent traffic patterns in CloudWatch
+
+## Mitigation Steps
+1. Scale Redis cluster (requires approval)
+2. Increase connection pool limit in application config
+3. Enable connection queuing in pgbouncer</code></pre>
+        </div>
+
+        <h4>Frontmatter Fields</h4>
+        <ul>
+          <li><code>type</code> - Document type: <code>runbook</code>, <code>postmortem</code>, <code>architecture</code></li>
+          <li><code>services</code> - Array of related service names</li>
+          <li><code>symptoms</code> - Array of symptom descriptions for matching</li>
+          <li><code>severity</code> - Severity level: <code>sev1</code>, <code>sev2</code>, <code>sev3</code></li>
+          <li><code>tags</code> - Additional tags for search and categorization</li>
+        </ul>
+
+        <h2 id="evaluation">Evaluation</h2>
+        <p>RunbookAI includes evaluation tooling to benchmark investigation accuracy against datasets:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code># Run evaluation with RCAEval fixtures
+npm run eval:investigate -- \
+  --fixtures examples/evals/rcaeval-fixtures.generated.json \
+  --out .runbook/evals/rcaeval-report.json
+
+# Run all benchmark adapters
+npm run eval:all -- \
+  --out-dir .runbook/evals/all-benchmarks \
+  --rcaeval-input examples/evals/rcaeval-input.sample.json \
+  --tracerca-input examples/evals/tracerca-input.sample.json</code></pre>
+        </div>
+
+        <p>See the <a href="https://github.com/Runbook-Agent/RunbookAI/blob/main/docs/INVESTIGATION_EVAL.md">Investigation Evaluation Guide</a> for detailed documentation on benchmarking.</p>
+
+        <div class="info-box info-box-tip">
+          <div class="info-box-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Need Help?
+          </div>
+          <p>If you have questions or run into issues, please <a href="https://github.com/Runbook-Agent/RunbookAI/issues">open an issue</a> on GitHub or join the discussions.</p>
+        </div>
+      </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <a href="./" class="footer-logo">
+              <svg class="footer-logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="32" height="32" rx="8" fill="url(#footer-logo-gradient-docs)"/>
+                <path d="M8 12h16M8 16h12M8 20h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="24" cy="20" r="4" fill="white" fill-opacity="0.9"/>
+                <defs>
+                  <linearGradient id="footer-logo-gradient-docs" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#8B5CF6"/>
+                    <stop offset="1" stop-color="#6366F1"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span>RunbookAI</span>
+            </a>
+            <p>AI-powered incident response for modern SRE teams.</p>
+          </div>
+
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Product</h4>
+              <a href="docs.html">Documentation</a>
+              <a href="./#features">Features</a>
+              <a href="./#integrations">Integrations</a>
+              <a href="./#quickstart">Quick Start</a>
+            </div>
+            <div class="footer-column">
+              <h4>Resources</h4>
+              <a href="#configuration">Configuration</a>
+              <a href="#commands">Commands</a>
+              <a href="#knowledge-sources">Knowledge Sources</a>
+              <a href="#skills">Skills</a>
+            </div>
+            <div class="footer-column">
+              <h4>Community</h4>
+              <a href="https://github.com/Runbook-Agent/RunbookAI" target="_blank" rel="noopener">GitHub</a>
+              <a href="https://github.com/Runbook-Agent/RunbookAI/issues" target="_blank" rel="noopener">Issues</a>
+              <a href="https://github.com/Runbook-Agent/RunbookAI/discussions" target="_blank" rel="noopener">Discussions</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p>Released under the MIT License.</p>
+          <p>Built with care for on-call engineers everywhere.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
