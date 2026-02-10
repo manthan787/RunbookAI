@@ -84,6 +84,8 @@ Perform a hypothesis-driven investigation of a PagerDuty or OpsGenie incident.
 ```bash
 runbook investigate PD-12345
 runbook investigate PD-12345 --auto-remediate
+runbook investigate PD-12345 --learn
+runbook investigate PD-12345 --learn --apply-runbook-updates
 ```
 
 The agent will:
@@ -93,6 +95,11 @@ The agent will:
 4. Branch deeper on strong evidence
 5. Identify root cause with confidence level
 6. Suggest remediation
+
+With `--learn`, Runbook also writes learning artifacts to `.runbook/learning/<investigation-id>/`:
+1. `postmortem-<incident>.md` draft
+2. `knowledge-suggestions.json`
+3. runbook update proposals (or direct updates with `--apply-runbook-updates`)
 
 ### `runbook status`
 

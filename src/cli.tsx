@@ -24,6 +24,7 @@ import type { AgentEvent } from './agent/types';
 import { skillRegistry } from './skills/registry';
 import { getRuntimeTools } from './cli/runtime-tools';
 import { startSlackGateway, executeSlackRequestWithRuntime } from './slack/gateway';
+import { runLearningLoop, type LearningEvent } from './learning/loop';
 import {
   createOrchestrator,
   type InvestigationEvent,
@@ -567,7 +568,9 @@ async function approveRemediationStepInteractive(step: RemediationStep): Promise
 async function runStructuredInvestigation(
   incidentId: string,
   verbose: boolean,
-  autoRemediate: boolean
+  autoRemediate: boolean,
+  learn: boolean,
+  applyRunbookUpdates: boolean
 ) {
   console.log(chalk.cyan('Runbook Investigation'));
   console.log(chalk.gray('─'.repeat(40)));
@@ -597,6 +600,25 @@ async function runStructuredInvestigation(
   const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
   const toolsByName = new Map(runtimeTools.map((tool) => [tool.name, tool]));
   const shouldPromptForRemediation = !autoRemediate && process.stdin.isTTY && process.stdout.isTTY;
+  const learningEvents: LearningEvent[] = [];
+
+  const recordLearningEvent = (
+    type: LearningEvent['type'],
+    summary: string,
+    phase?: string,
+    details?: Record<string, unknown>
+  ) => {
+    if (!learn) {
+      return;
+    }
+    learningEvents.push({
+      timestamp: new Date().toISOString(),
+      type,
+      summary,
+      phase,
+      details,
+    });
+  };
 
   const orchestrator = createOrchestrator(
     {
@@ -657,11 +679,21 @@ async function runStructuredInvestigation(
     switch (event.type) {
       case 'phase_change':
         phaseCounter++;
+        recordLearningEvent(
+          'phase_change',
+          `${formatPhaseLabel(event.phase)}: ${event.reason}`,
+          event.phase
+        );
         console.log();
         console.log(chalk.blue(`Step ${phaseCounter}: ${formatPhaseLabel(event.phase)}`));
         console.log(chalk.gray(`  ${event.reason}`));
         break;
       case 'triage_complete':
+        recordLearningEvent('triage_complete', event.result.summary, 'triage', {
+          severity: event.result.severity,
+          affectedServices: event.result.affectedServices,
+          symptoms: event.result.symptoms,
+        });
         console.log(chalk.cyan(`  Triage summary: ${event.result.summary}`));
         if (event.result.affectedServices.length > 0) {
           console.log(
@@ -678,6 +710,15 @@ async function runStructuredInvestigation(
         }
         break;
       case 'hypothesis_created':
+        recordLearningEvent(
+          'hypothesis_created',
+          `${event.hypothesis.id}: ${event.hypothesis.statement}`,
+          'hypothesize',
+          {
+            priority: event.hypothesis.priority,
+            category: event.hypothesis.category,
+          }
+        );
         console.log(
           chalk.magenta(
             `  Hypothesis ${event.hypothesis.id} [P${event.hypothesis.priority}] (${event.hypothesis.category}): ${event.hypothesis.statement}`
@@ -685,6 +726,14 @@ async function runStructuredInvestigation(
         );
         break;
       case 'hypothesis_updated':
+        recordLearningEvent(
+          'hypothesis_updated',
+          `${event.hypothesis.id}: ${event.hypothesis.status} (${event.hypothesis.evidenceStrength})`,
+          'evaluate',
+          {
+            confidence: event.hypothesis.confidence,
+          }
+        );
         if (verbose) {
           console.log(
             chalk.gray(
@@ -695,6 +744,14 @@ async function runStructuredInvestigation(
         break;
       case 'query_executing':
         queryCounter++;
+        recordLearningEvent(
+          'query_executing',
+          `${event.query.tool} ${event.query.queryType}`,
+          'investigate',
+          {
+            parameters: event.query.parameters,
+          }
+        );
         console.log(
           chalk.gray(`  Query ${queryCounter}: ${event.query.tool} (${event.query.queryType})`)
         );
@@ -708,6 +765,15 @@ async function runStructuredInvestigation(
       case 'query_complete':
         {
           const summaryLines = summarizeInvestigationQueryResult(event.result);
+          recordLearningEvent(
+            'query_complete',
+            summaryLines[0] || `Completed ${event.query.tool} query`,
+            'investigate',
+            {
+              tool: event.query.tool,
+              highlights: summaryLines.slice(0, 3),
+            }
+          );
           if (summaryLines.length > 0) {
             console.log(chalk.green(`    ✓ ${summaryLines[0]}`));
             for (const line of summaryLines.slice(1)) {
@@ -721,6 +787,15 @@ async function runStructuredInvestigation(
         }
         break;
       case 'evidence_evaluated':
+        recordLearningEvent(
+          'evidence_evaluated',
+          `${event.evaluation.hypothesisId}: ${event.evaluation.action} (${event.evaluation.evidenceStrength})`,
+          'evaluate',
+          {
+            confidence: event.evaluation.confidence,
+            findings: event.evaluation.findings.slice(0, 3),
+          }
+        );
         console.log(
           chalk.yellow(
             `  Evidence on ${event.evaluation.hypothesisId}: ${event.evaluation.evidenceStrength} (${event.evaluation.confidence}%) -> ${event.evaluation.action.toUpperCase()}`
@@ -733,6 +808,15 @@ async function runStructuredInvestigation(
         }
         break;
       case 'conclusion_reached':
+        recordLearningEvent(
+          'conclusion_reached',
+          event.conclusion.rootCause,
+          'conclude',
+          {
+            confidence: event.conclusion.confidence,
+            affectedServices: event.conclusion.affectedServices || [],
+          }
+        );
         console.log(chalk.green(`  Candidate root cause: ${event.conclusion.rootCause}`));
         console.log(chalk.gray(`  Confidence: ${event.conclusion.confidence}`));
         if (event.conclusion.affectedServices && event.conclusion.affectedServices.length > 0) {
@@ -743,10 +827,21 @@ async function runStructuredInvestigation(
         }
         break;
       case 'error':
+        recordLearningEvent('error', `${event.phase}: ${event.error.message}`, event.phase);
         console.log(chalk.red(`✗ ${event.phase}: ${event.error.message}`));
         break;
       case 'remediation_step':
         {
+          recordLearningEvent(
+            'remediation_step',
+            `${event.step.action} [${event.status}]`,
+            'remediate',
+            {
+              riskLevel: event.step.riskLevel,
+              requiresApproval: event.step.requiresApproval,
+              matchingSkill: event.step.matchingSkill,
+            }
+          );
           const symbol = event.status === 'completed' ? '✓' : event.status === 'failed' ? '✗' : '→';
           console.log(
             chalk.magenta(`  ${symbol} Remediation: ${event.step.action} [${event.status}]`)
@@ -824,6 +919,59 @@ async function runStructuredInvestigation(
     console.log(chalk.cyan('Detailed Summary:'));
     printMarkdownToConsole(result.summary);
   }
+
+  if (learn) {
+    console.log();
+    console.log(chalk.cyan('Learning Loop'));
+    console.log(chalk.gray('─'.repeat(40)));
+
+    try {
+      const learning = await runLearningLoop({
+        result,
+        incidentId,
+        query,
+        events: learningEvents,
+        applyRunbookUpdates,
+        complete: async (prompt: string) => {
+          const response = await llm.chat(
+            'You are an SRE postmortem and runbook improvement assistant. Return only valid JSON.',
+            prompt
+          );
+          return response.content;
+        },
+      });
+
+      console.log(chalk.green(`Artifacts: ${learning.artifactDir}`));
+      console.log(chalk.gray(`Postmortem draft: ${learning.postmortemPath}`));
+      console.log(chalk.gray(`Suggestions: ${learning.suggestionsPath}`));
+      if (learning.appliedRunbookUpdates.length > 0) {
+        console.log(
+          chalk.green(`Applied runbook updates: ${learning.appliedRunbookUpdates.length}`)
+        );
+      }
+      if (learning.proposedRunbookUpdates.length > 0) {
+        console.log(
+          chalk.yellow(`Proposed updates/docs: ${learning.proposedRunbookUpdates.length}`)
+        );
+      }
+
+      if (applyRunbookUpdates && learning.appliedRunbookUpdates.length > 0) {
+        const retriever = createRetriever();
+        try {
+          await retriever.sync();
+          console.log(chalk.gray('Knowledge index refreshed after runbook updates.'));
+        } finally {
+          retriever.close();
+        }
+      }
+    } catch (error) {
+      console.log(
+        chalk.red(
+          `Learning loop failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  }
 }
 
 // CLI Program
@@ -867,34 +1015,59 @@ program
   .description('Investigate a PagerDuty/OpsGenie incident')
   .option('-v, --verbose', 'Show detailed output')
   .option('--auto-remediate', 'Attempt to execute remediation steps through runtime skills')
-  .action(async (incidentId: string, options: { verbose?: boolean; autoRemediate?: boolean }) => {
-    try {
-      await runStructuredInvestigation(
-        incidentId,
-        options.verbose || false,
-        options.autoRemediate || false
-      );
-    } catch (error) {
-      console.error(
-        chalk.red(
-          `Structured investigation failed: ${error instanceof Error ? error.message : error}`
-        )
-      );
-      console.log(chalk.yellow('Falling back to standard agent investigation...'));
-      const fallbackQuery = `Investigate incident ${incidentId}. Identify the root cause using hypothesis-driven investigation.`;
-      if (process.stdout.isTTY) {
-        render(
-          <AgentUI
-            query={fallbackQuery}
-            incidentId={incidentId}
-            verbose={options.verbose || options.autoRemediate || false}
-          />
+  .option(
+    '--learn',
+    'Generate postmortem draft + runbook knowledge suggestions from investigation output'
+  )
+  .option(
+    '--apply-runbook-updates',
+    'Apply generated runbook updates/new runbooks into .runbook/runbooks (requires --learn)'
+  )
+  .action(
+    async (
+      incidentId: string,
+      options: {
+        verbose?: boolean;
+        autoRemediate?: boolean;
+        learn?: boolean;
+        applyRunbookUpdates?: boolean;
+      }
+    ) => {
+      if (options.applyRunbookUpdates && !options.learn) {
+        console.error(chalk.red('--apply-runbook-updates requires --learn'));
+        process.exit(1);
+      }
+
+      try {
+        await runStructuredInvestigation(
+          incidentId,
+          options.verbose || false,
+          options.autoRemediate || false,
+          options.learn || false,
+          options.applyRunbookUpdates || false
         );
-      } else {
-        await runSimple(fallbackQuery, incidentId);
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `Structured investigation failed: ${error instanceof Error ? error.message : error}`
+          )
+        );
+        console.log(chalk.yellow('Falling back to standard agent investigation...'));
+        const fallbackQuery = `Investigate incident ${incidentId}. Identify the root cause using hypothesis-driven investigation.`;
+        if (process.stdout.isTTY) {
+          render(
+            <AgentUI
+              query={fallbackQuery}
+              incidentId={incidentId}
+              verbose={options.verbose || options.autoRemediate || options.learn || false}
+            />
+          );
+        } else {
+          await runSimple(fallbackQuery, incidentId);
+        }
       }
     }
-  });
+  );
 
 // Status command - quick infrastructure overview
 program
