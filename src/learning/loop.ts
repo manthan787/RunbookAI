@@ -319,7 +319,9 @@ function buildFallbackDraft(input: LearningLoopInput): LearningDraft {
       contributingFactors: [],
       timeline,
       whatWentWell: ['Hypothesis-driven investigation was executed with structured phases.'],
-      whatDidntGoWell: ['Learning draft generated from fallback template due to parser/model error.'],
+      whatDidntGoWell: [
+        'Learning draft generated from fallback template due to parser/model error.',
+      ],
       actionItems: [
         {
           title: 'Validate and finalize postmortem with service owners',
@@ -544,7 +546,8 @@ async function applySuggestion(
       return { applied, proposed };
     }
 
-    const target = runbook ? runbook.path : 'no-local-runbook-match';
+    const targetPath = runbook ? runbook.path : 'no-local-runbook-match';
+    const targetTitle = runbook ? runbook.title : 'unknown';
     const proposalPath = join(
       runbookUpdatesDir,
       `${slugify(`${suggestion.title}-${context.incidentLabel}`) || 'runbook-update'}.md`
@@ -553,7 +556,8 @@ async function applySuggestion(
       '# Runbook Update Proposal',
       '',
       `- Incident: ${context.incidentLabel}`,
-      `- Suggested Target: ${target}`,
+      `- Suggested Target Title: ${targetTitle}`,
+      `- Suggested Target Path: ${targetPath}`,
       `- Confidence: ${suggestion.confidence}`,
       '',
       section,
