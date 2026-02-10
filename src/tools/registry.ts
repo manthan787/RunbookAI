@@ -1452,6 +1452,77 @@ function preprocessDateExpressions(command: string): string {
   return processedCommand;
 }
 
+const READ_ONLY_AWS_CLI_PREFIXES = [
+  'get',
+  'list',
+  'describe',
+  'batch-get',
+  'head',
+  'lookup',
+  'search',
+  'query',
+  'scan',
+  'select',
+  'tail',
+];
+
+const READ_ONLY_AWS_CLI_EXACT = new Set(['ls', 'help']);
+
+function tokenizeCliCommand(command: string): string[] {
+  const matches = command.match(/"[^"]*"|'[^']*'|\S+/g) || [];
+  return matches
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => token.replace(/^['"]|['"]$/g, ''));
+}
+
+function hasDangerousShellOperators(command: string): boolean {
+  return (
+    command.includes(';') ||
+    command.includes('|') ||
+    command.includes('&&') ||
+    command.includes('$(') ||
+    command.includes('`') ||
+    command.includes('\n') ||
+    command.includes('\r')
+  );
+}
+
+function parseAwsCliServiceAndOperation(command: string): { service?: string; operation?: string } {
+  const tokens = tokenizeCliCommand(command);
+  if (tokens.length < 3 || tokens[0] !== 'aws') {
+    return {};
+  }
+
+  let index = 1;
+  while (index < tokens.length && tokens[index].startsWith('-')) {
+    const flag = tokens[index];
+    const next = tokens[index + 1];
+    if (!flag.startsWith('--no-') && next && !next.startsWith('-')) {
+      index += 2;
+      continue;
+    }
+    index += 1;
+  }
+
+  const service = tokens[index];
+  const operation = tokens[index + 1];
+  return { service, operation };
+}
+
+function isReadOnlyAwsCliOperation(operation: string): boolean {
+  const normalized = operation.toLowerCase().trim();
+  if (!normalized) {
+    return false;
+  }
+  if (READ_ONLY_AWS_CLI_EXACT.has(normalized)) {
+    return true;
+  }
+  return READ_ONLY_AWS_CLI_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}-`)
+  );
+}
+
 /**
  * AWS CLI Fallback Tool
  *
@@ -1470,7 +1541,7 @@ export const awsCliTool = defineTool(
    IMPORTANT:
    - Only use for READ operations (list, describe, get)
    - Do NOT use for mutations (create, update, delete, put) - use aws_mutate instead
-   - Requires user approval before execution
+   - Read-only commands run without approval
    - Always include --region flag`,
   {
     type: 'object',
@@ -1489,7 +1560,6 @@ export const awsCliTool = defineTool(
   async (args) => {
     const rawCommand = args.command as string;
     const reason = args.reason as string;
-    const { config } = await getSafetySettings();
 
     // Validate command starts with 'aws'
     if (!rawCommand.trim().startsWith('aws ')) {
@@ -1498,6 +1568,14 @@ export const awsCliTool = defineTool(
 
     // Preprocess date expressions for cross-platform compatibility
     const command = preprocessDateExpressions(rawCommand);
+
+    // Block shell control operators to keep aws_cli scoped to a single AWS command.
+    if (hasDangerousShellOperators(command)) {
+      return {
+        error:
+          'Shell control operators are not allowed in aws_cli commands. Provide a single plain AWS CLI command.',
+      };
+    }
 
     // Block mutation commands
     const mutationKeywords = [
@@ -1522,24 +1600,11 @@ export const awsCliTool = defineTool(
       }
     }
 
-    // Explicit approval is required before any shell execution.
-    const approvalRequest: MutationRequest = {
-      id: generateMutationId(),
-      operation: 'aws_cli:execute',
-      resource: 'aws-cli',
-      description: reason,
-      riskLevel: 'low',
-      parameters: { command },
-    };
-
-    const approval = await requestApprovalWithOptions(approvalRequest, {
-      useSlack: config.incident.slack.enabled,
-    });
-
-    if (!approval.approved) {
+    const { operation } = parseAwsCliServiceAndOperation(command);
+    if (!operation || !isReadOnlyAwsCliOperation(operation)) {
       return {
-        status: 'rejected',
-        reason: 'AWS CLI command execution rejected by user',
+        error:
+          'Only read-only AWS CLI operations are allowed via aws_cli. Use aws_mutate for state-changing actions.',
         command,
       };
     }

@@ -48,6 +48,67 @@ const DEFAULT_CONFIG: AgentConfig = {
   },
 };
 
+function stableSerialize(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) {
+      return input.map(normalize);
+    }
+    if (input && typeof input === 'object') {
+      const obj = input as Record<string, unknown>;
+      const normalized: Record<string, unknown> = {};
+      for (const key of Object.keys(obj).sort()) {
+        normalized[key] = normalize(obj[key]);
+      }
+      return normalized;
+    }
+    return input;
+  };
+
+  return JSON.stringify(normalize(value));
+}
+
+function isProceduralRunbookQuery(query: string): boolean {
+  const normalized = query.toLowerCase();
+  return /what should i do|what do i do|how do i|runbook|playbook|procedure|steps|fix|resolve|troubleshoot/.test(
+    normalized
+  );
+}
+
+function buildRunbookCitationSection(knowledge?: RetrievedKnowledge): string {
+  if (!knowledge || knowledge.runbooks.length === 0) {
+    return '';
+  }
+
+  const seen = new Set<string>();
+  const references: Array<{ title: string; sourceUrl?: string }> = [];
+
+  for (const runbook of knowledge.runbooks) {
+    const key = runbook.documentId || runbook.id || runbook.title;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    references.push({
+      title: runbook.title,
+      sourceUrl: runbook.sourceUrl,
+    });
+  }
+
+  if (references.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = [];
+  lines.push('## Runbook References');
+  lines.push('');
+  references.slice(0, 8).forEach((reference, index) => {
+    const sourceSuffix = reference.sourceUrl ? ` (${reference.sourceUrl})` : '';
+    lines.push(`${index + 1}. ${reference.title}${sourceSuffix}`);
+  });
+
+  return `\n\n---\n\n${lines.join('\n')}`;
+}
+
 export interface AgentDependencies {
   llm: LLMClient;
   tools: Tool[];
@@ -80,11 +141,7 @@ export interface AgentDependencies {
 
 // Interfaces for dependencies (to be implemented)
 export interface LLMClient {
-  chat(
-    systemPrompt: string,
-    userPrompt: string,
-    tools?: Tool[]
-  ): Promise<LLMResponse>;
+  chat(systemPrompt: string, userPrompt: string, tools?: Tool[]): Promise<LLMResponse>;
 }
 
 export interface LLMResponse {
@@ -171,11 +228,7 @@ export class Agent {
   async *run(query: string, incidentId?: string): AsyncGenerator<AgentEvent> {
     // Initialize scratchpad with tiered storage support
     const sessionId = Scratchpad.generateSessionId();
-    const scratchpad = new Scratchpad(
-      this.scratchpadDir,
-      sessionId,
-      this.config.toolLimits
-    );
+    const scratchpad = new Scratchpad(this.scratchpadDir, sessionId, this.config.toolLimits);
     await scratchpad.append({ type: 'init', query, incidentId });
 
     // Set active scratchpad for get_full_result tool
@@ -214,6 +267,7 @@ export class Agent {
     let knowledge: RetrievedKnowledge | undefined;
     if (this.knowledgeRetriever) {
       const context: InvestigationContext = {
+        query,
         incidentId,
         services: [], // Will be populated from query analysis
         symptoms: [],
@@ -229,9 +283,7 @@ export class Agent {
         yield {
           type: 'knowledge_retrieved',
           documentCount:
-            knowledge.runbooks.length +
-            knowledge.postmortems.length +
-            knowledge.knownIssues.length,
+            knowledge.runbooks.length + knowledge.postmortems.length + knowledge.knownIssues.length,
           types: [
             knowledge.runbooks.length > 0 ? 'runbooks' : '',
             knowledge.postmortems.length > 0 ? 'postmortems' : '',
@@ -241,6 +293,42 @@ export class Agent {
       }
     }
 
+    const hasRelevantRunbookKnowledge =
+      !!knowledge && (knowledge.runbooks.length > 0 || knowledge.knownIssues.length > 0);
+    const shouldPreferKnowledgeOnlyAnswer =
+      !incidentId && hasRelevantRunbookKnowledge && isProceduralRunbookQuery(query);
+
+    if (shouldPreferKnowledgeOnlyAnswer && knowledge) {
+      yield { type: 'answer_start' };
+
+      const knowledgeOnlyPrompt = [
+        buildKnowledgePrompt(knowledge),
+        '## User Query',
+        query,
+        '',
+        '## Instructions',
+        'Answer directly from the organizational knowledge above.',
+        'Prioritize runbook steps and known issue remediation in a concise numbered list.',
+        'Do not call tools. If something is missing, say what is missing.',
+      ].join('\n');
+
+      const knowledgeOnlySystemPrompt = `${this.systemPrompt}\n\nFor this response, rely only on provided organizational knowledge and do not use tools.`;
+      const finalResponse = await this.llm.chat(knowledgeOnlySystemPrompt, knowledgeOnlyPrompt);
+      const citationSection = buildRunbookCitationSection(knowledge);
+
+      yield {
+        type: 'done',
+        answer:
+          citationSection && !finalResponse.content.includes('## Runbook References')
+            ? finalResponse.content + citationSection
+            : finalResponse.content,
+        investigationId: sessionId,
+      };
+
+      setActiveScratchpad(null);
+      return;
+    }
+
     // Track previous services/symptoms for re-querying
     let previousServices: string[] = [];
     let previousSymptoms: string[] = [];
@@ -248,6 +336,7 @@ export class Agent {
     // Main iteration loop
     let iteration = 0;
     let lastResponse: LLMResponse | null = null;
+    const repeatedToolCallCount = new Map<string, number>();
 
     while (iteration < this.config.maxIterations) {
       iteration++;
@@ -270,11 +359,7 @@ export class Agent {
             query,
             investigationState: investigationMemory?.getState(),
             compactResults: this.toolSummarizer
-              ? new Map(
-                  tieredResults
-                    .filter(r => r.compact)
-                    .map(r => [r, r.compact!] as const)
-                )
+              ? new Map(tieredResults.filter((r) => r.compact).map((r) => [r, r.compact!] as const))
               : undefined,
           });
 
@@ -364,7 +449,29 @@ export class Agent {
       }
 
       // Execute tool calls
+      let executedAnyTool = false;
       for (const toolCall of response.toolCalls) {
+        const callSignature = `${toolCall.name}:${stableSerialize(toolCall.args)}`;
+        const signatureCount = (repeatedToolCallCount.get(callSignature) || 0) + 1;
+        repeatedToolCallCount.set(callSignature, signatureCount);
+
+        if (signatureCount > 2) {
+          const warning =
+            `Skipping repetitive tool call (${signatureCount}x): ${toolCall.name}. ` +
+            'Try a different query, narrower scope, or move to synthesis.';
+          yield {
+            type: 'tool_limit',
+            tool: toolCall.name,
+            warning,
+          };
+          yield {
+            type: 'tool_error',
+            tool: toolCall.name,
+            error: warning,
+          };
+          continue;
+        }
+
         const tool = this.tools.get(toolCall.name);
         if (!tool) {
           yield {
@@ -394,6 +501,7 @@ export class Agent {
           tool: toolCall.name,
           args: toolCall.args,
         };
+        executedAnyTool = true;
 
         const startTime = Date.now();
         try {
@@ -432,8 +540,12 @@ export class Agent {
           // Check for new services/symptoms to trigger knowledge re-query
           if (investigationMemory && this.knowledgeContextManager) {
             const state = investigationMemory.getState();
-            const newServices = state.servicesDiscovered.filter(s => !previousServices.includes(s));
-            const newSymptoms = state.symptomsIdentified.filter(s => !previousSymptoms.includes(s));
+            const newServices = state.servicesDiscovered.filter(
+              (s) => !previousServices.includes(s)
+            );
+            const newSymptoms = state.symptomsIdentified.filter(
+              (s) => !previousSymptoms.includes(s)
+            );
 
             if (newServices.length > 0 || newSymptoms.length > 0) {
               await this.knowledgeContextManager.updateFromInvestigationState(
@@ -452,6 +564,10 @@ export class Agent {
             error: error instanceof Error ? error.message : String(error),
           };
         }
+      }
+
+      if (!executedAnyTool) {
+        break;
       }
     }
 
@@ -481,9 +597,14 @@ export class Agent {
       answer += '\n\n---\n\n' + hypothesisEngine.toMarkdown();
     }
 
-    // Include investigation summary if available
-    if (investigationMemory) {
+    // Include investigation summary only for explicit incident investigations.
+    if (investigationMemory && incidentId) {
       answer += '\n\n---\n\n## Investigation Summary\n\n' + investigationMemory.buildFinalSummary();
+    }
+
+    const citationSection = buildRunbookCitationSection(knowledge);
+    if (citationSection && !answer.includes('## Runbook References')) {
+      answer += citationSection;
     }
 
     yield {

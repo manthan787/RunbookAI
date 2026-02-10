@@ -18,6 +18,7 @@ import { loadConfig, validateConfig } from './utils/config';
 import { quickSetup, loadServiceConfig, ONBOARDING_PROMPTS } from './config/onboarding';
 import { SetupWizard } from './cli/setup-wizard';
 import { ChatInterface } from './cli/chat';
+import { MarkdownText } from './cli/components/markdown';
 import { createRetriever } from './knowledge/retriever';
 import type { AgentEvent } from './agent/types';
 import { skillRegistry } from './skills/registry';
@@ -28,6 +29,7 @@ import {
   type InvestigationEvent,
   type RemediationContext,
 } from './agent/investigation-orchestrator';
+import type { RemediationStep } from './agent/state-machine';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -40,12 +42,14 @@ function createAgentKnowledgeRetriever() {
 
   return {
     retrieve: async (context: {
+      query?: string;
       incidentId?: string;
       services: string[];
       symptoms: string[];
       errorMessages: string[];
     }) => {
       const queryParts = [
+        context.query,
         context.incidentId,
         ...context.services,
         ...context.symptoms,
@@ -70,7 +74,7 @@ async function createRuntimeAgent(config: Awaited<ReturnType<typeof loadConfig>>
 
   await skillRegistry.loadUserSkills();
   const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
-  const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+  const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
 
   return new Agent({
     llm,
@@ -133,6 +137,11 @@ function AgentUI({ query, incidentId, verbose }: AgentUIProps) {
             break;
           case 'tool_end':
             setCurrentTool(null);
+            setStatus('thinking');
+            break;
+          case 'tool_error':
+            setCurrentTool(null);
+            setStatus('thinking');
             break;
           case 'done':
             setAnswer(event.answer);
@@ -168,6 +177,16 @@ function AgentUI({ query, incidentId, verbose }: AgentUIProps) {
               </Text>
             )}
             {verbose && event.type === 'tool_start' && <Text color="blue">→ {event.tool}</Text>}
+            {verbose && event.type === 'tool_limit' && (
+              <Text color="yellow">
+                ! {event.tool}: {event.warning}
+              </Text>
+            )}
+            {verbose && event.type === 'tool_error' && (
+              <Text color="red">
+                ✗ {event.tool}: {event.error}
+              </Text>
+            )}
           </Box>
         )}
       </Static>
@@ -200,7 +219,7 @@ function AgentUI({ query, incidentId, verbose }: AgentUIProps) {
           <Text color="green" bold>
             ─────────────────────────────────────────
           </Text>
-          <Text>{answer}</Text>
+          <MarkdownText content={answer} />
         </Box>
       )}
     </Box>
@@ -244,7 +263,7 @@ async function runSimple(query: string, incidentId?: string) {
         case 'done':
           console.log();
           console.log(chalk.green('─'.repeat(40)));
-          console.log(event.answer);
+          printMarkdownToConsole(event.answer);
           break;
       }
     }
@@ -252,6 +271,293 @@ async function runSimple(query: string, incidentId?: string) {
     console.error(chalk.red(`Error: ${err instanceof Error ? err.message : err}`));
     process.exit(1);
   }
+}
+
+function formatInlineMarkdownForConsole(text: string): string {
+  return text
+    .replace(/`([^`]+)`/g, (_match, value) => chalk.yellow(String(value)))
+    .replace(/\*\*([^*]+)\*\*/g, (_match, value) => chalk.bold(String(value)))
+    .replace(/\*([^*]+)\*/g, (_match, value) => chalk.italic(String(value)));
+}
+
+function printMarkdownToConsole(content: string): void {
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      console.log(chalk.gray(line));
+      continue;
+    }
+
+    const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headerMatch) {
+      const level = headerMatch[1].length;
+      const headerText = formatInlineMarkdownForConsole(headerMatch[2]);
+      if (level === 1) {
+        console.log(chalk.cyan.bold.underline(headerText));
+      } else if (level === 2) {
+        console.log(chalk.cyan.bold(headerText));
+      } else {
+        console.log(chalk.blue.bold(headerText));
+      }
+      continue;
+    }
+
+    if (/^[-*_]{3,}\s*$/.test(line.trim())) {
+      console.log(chalk.gray('─'.repeat(40)));
+      continue;
+    }
+
+    const orderedItem = line.match(/^(\s*)(\d+\.)\s+(.+)$/);
+    if (orderedItem) {
+      console.log(
+        `${orderedItem[1]}${chalk.gray(orderedItem[2])} ${formatInlineMarkdownForConsole(
+          orderedItem[3]
+        )}`
+      );
+      continue;
+    }
+
+    const bulletItem = line.match(/^(\s*)[-*]\s+(.+)$/);
+    if (bulletItem) {
+      console.log(
+        `${bulletItem[1]}${chalk.gray('•')} ${formatInlineMarkdownForConsole(bulletItem[2])}`
+      );
+      continue;
+    }
+
+    const quoteItem = line.match(/^>\s?(.+)$/);
+    if (quoteItem) {
+      console.log(`${chalk.gray('│')} ${formatInlineMarkdownForConsole(quoteItem[1])}`);
+      continue;
+    }
+
+    console.log(formatInlineMarkdownForConsole(line));
+  }
+}
+
+function formatPhaseLabel(phase: string): string {
+  return phase.replace(/_/g, ' ').toUpperCase();
+}
+
+function parseLambdaName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const marker = 'function:';
+  const idx = trimmed.indexOf(marker);
+  if (idx !== -1) {
+    return trimmed.slice(idx + marker.length);
+  }
+  return trimmed;
+}
+
+function formatParamValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(',');
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return JSON.stringify(value);
+}
+
+function formatQueryParameterPreview(parameters: Record<string, unknown>): string {
+  const preferredOrder = [
+    'query',
+    'services',
+    'state',
+    'action',
+    'log_group',
+    'filter_pattern',
+    'minutes_back',
+    'region',
+  ];
+
+  const entries: string[] = [];
+  for (const key of preferredOrder) {
+    if (!(key in parameters)) {
+      continue;
+    }
+    entries.push(`${key}=${formatParamValue(parameters[key])}`);
+  }
+
+  if (entries.length === 0) {
+    const fallback = Object.entries(parameters).slice(0, 4);
+    for (const [key, value] of fallback) {
+      entries.push(`${key}=${formatParamValue(value)}`);
+    }
+  }
+
+  return entries.join(' | ');
+}
+
+function summarizeInvestigationQueryResult(result: unknown): string[] {
+  if (result === null || result === undefined) {
+    return ['No result returned'];
+  }
+
+  if (typeof result !== 'object') {
+    return [String(result).slice(0, 180)];
+  }
+
+  const obj = result as Record<string, unknown>;
+  const lines: string[] = [];
+
+  if (typeof obj.error === 'string' && obj.error.trim()) {
+    lines.push(`Error: ${obj.error}`);
+  }
+
+  if (typeof obj.count === 'number') {
+    lines.push(`Count: ${obj.count}`);
+  }
+
+  if (typeof obj.totalResources === 'number') {
+    const servicesQueried =
+      typeof obj.servicesQueried === 'number' ? obj.servicesQueried : undefined;
+    lines.push(
+      servicesQueried !== undefined
+        ? `AWS resources: ${obj.totalResources} across ${servicesQueried} services`
+        : `AWS resources: ${obj.totalResources}`
+    );
+  }
+
+  if (Array.isArray(obj.alarms)) {
+    const alarmNames = obj.alarms
+      .slice(0, 3)
+      .map((alarm) =>
+        alarm && typeof alarm === 'object' ? (alarm as Record<string, unknown>).alarmName : null
+      )
+      .filter((name): name is string => typeof name === 'string' && name.length > 0);
+    if (alarmNames.length > 0) {
+      lines.push(`Alarms: ${alarmNames.join(', ')}`);
+    }
+  }
+
+  if (Array.isArray(obj.events)) {
+    const messages = obj.events
+      .slice(0, 2)
+      .map((event) =>
+        event && typeof event === 'object' ? (event as Record<string, unknown>).message : null
+      )
+      .filter((message): message is string => typeof message === 'string' && message.length > 0)
+      .map((message) => message.replace(/\s+/g, ' ').slice(0, 140));
+    if (messages.length > 0) {
+      lines.push(`Log samples: ${messages.join(' | ')}`);
+    }
+  }
+
+  if (obj.results && typeof obj.results === 'object') {
+    const serviceCounts = Object.entries(obj.results as Record<string, unknown>)
+      .slice(0, 4)
+      .map(([serviceId, data]) => {
+        if (!data || typeof data !== 'object') {
+          return null;
+        }
+        const count = (data as Record<string, unknown>).count;
+        if (typeof count !== 'number') {
+          return null;
+        }
+        return `${serviceId}=${count}`;
+      })
+      .filter((entry): entry is string => Boolean(entry));
+
+    if (serviceCounts.length > 0) {
+      lines.push(`Service counts: ${serviceCounts.join(', ')}`);
+    }
+
+    const lambda = (obj.results as Record<string, unknown>).lambda;
+    if (lambda && typeof lambda === 'object') {
+      const resources = (lambda as Record<string, unknown>).resources;
+      if (Array.isArray(resources)) {
+        const names = resources
+          .slice(0, 3)
+          .map((resource) => {
+            if (!resource || typeof resource !== 'object') {
+              return null;
+            }
+            const item = resource as Record<string, unknown>;
+            return (
+              parseLambdaName(item.name) ||
+              parseLambdaName(item.functionName) ||
+              parseLambdaName(item.FunctionName) ||
+              parseLambdaName(item.id)
+            );
+          })
+          .filter((name): name is string => Boolean(name));
+        if (names.length > 0) {
+          lines.push(`Lambda: ${names.join(', ')}`);
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(obj.triggeredMonitors)) {
+    const monitorNames = obj.triggeredMonitors
+      .slice(0, 3)
+      .map((monitor) =>
+        monitor && typeof monitor === 'object' ? (monitor as Record<string, unknown>).name : null
+      )
+      .filter((name): name is string => typeof name === 'string' && name.length > 0);
+    if (monitorNames.length > 0) {
+      lines.push(`Triggered monitors: ${monitorNames.join(', ')}`);
+    }
+  }
+
+  if (lines.length === 0) {
+    lines.push(`Result keys: ${Object.keys(obj).slice(0, 6).join(', ') || 'none'}`);
+  }
+
+  return lines.slice(0, 6);
+}
+
+async function promptYesNo(question: string, defaultYes: boolean = false): Promise<boolean> {
+  const { createInterface } = await import('readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const suffix = defaultYes ? ' [Y/n]: ' : ' [y/N]: ';
+
+  try {
+    const answer = (await rl.question(question + suffix)).trim().toLowerCase();
+    if (!answer) {
+      return defaultYes;
+    }
+    return answer === 'y' || answer === 'yes';
+  } finally {
+    rl.close();
+  }
+}
+
+async function approveRemediationStepInteractive(step: RemediationStep): Promise<boolean> {
+  console.log();
+  console.log(chalk.yellow('Remediation approval required'));
+  console.log(chalk.gray('─'.repeat(40)));
+  console.log(chalk.cyan(`Action: ${step.action}`));
+  console.log(chalk.gray(`Description: ${step.description}`));
+  console.log(chalk.gray(`Risk: ${step.riskLevel}`));
+  if (step.matchingSkill) {
+    console.log(chalk.gray(`Skill: ${step.matchingSkill}`));
+  }
+  if (step.command) {
+    console.log(chalk.gray(`Command: ${step.command}`));
+  }
+  if (step.rollbackCommand) {
+    console.log(chalk.gray(`Rollback: ${step.rollbackCommand}`));
+  }
+
+  return promptYesNo('Execute this remediation step?', false);
 }
 
 /**
@@ -288,8 +594,9 @@ async function runStructuredInvestigation(
   });
   await skillRegistry.loadUserSkills();
   const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
-  const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+  const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
   const toolsByName = new Map(runtimeTools.map((tool) => [tool.name, tool]));
+  const shouldPromptForRemediation = !autoRemediate && process.stdin.isTTY && process.stdout.isTTY;
 
   const orchestrator = createOrchestrator(
     {
@@ -314,6 +621,9 @@ async function runStructuredInvestigation(
       incidentId,
       maxIterations: config.agent.maxIterations,
       autoApproveRemediation: autoRemediate,
+      approveRemediationStep: shouldPromptForRemediation
+        ? (step: RemediationStep) => approveRemediationStepInteractive(step)
+        : undefined,
       availableTools: runtimeTools.map((tool) => tool.name),
       availableSkills: runtimeSkills,
       fetchRelevantRunbooks: async (context: RemediationContext) => {
@@ -340,41 +650,120 @@ async function runStructuredInvestigation(
     }
   );
 
+  let phaseCounter = 0;
+  let queryCounter = 0;
+
   orchestrator.on((event: InvestigationEvent) => {
     switch (event.type) {
       case 'phase_change':
-        console.log(chalk.blue(`→ Phase: ${event.phase}`));
+        phaseCounter++;
+        console.log();
+        console.log(chalk.blue(`Step ${phaseCounter}: ${formatPhaseLabel(event.phase)}`));
+        console.log(chalk.gray(`  ${event.reason}`));
+        break;
+      case 'triage_complete':
+        console.log(chalk.cyan(`  Triage summary: ${event.result.summary}`));
+        if (event.result.affectedServices.length > 0) {
+          console.log(
+            chalk.gray(`  Affected services: ${event.result.affectedServices.join(', ')}`)
+          );
+        }
+        if (event.result.symptoms.length > 0) {
+          console.log(chalk.gray(`  Symptoms: ${event.result.symptoms.slice(0, 3).join(' | ')}`));
+        }
+        if (verbose && event.result.errorMessages.length > 0) {
+          console.log(
+            chalk.gray(`  Error hints: ${event.result.errorMessages.slice(0, 3).join(' | ')}`)
+          );
+        }
+        break;
+      case 'hypothesis_created':
+        console.log(
+          chalk.magenta(
+            `  Hypothesis ${event.hypothesis.id} [P${event.hypothesis.priority}] (${event.hypothesis.category}): ${event.hypothesis.statement}`
+          )
+        );
+        break;
+      case 'hypothesis_updated':
+        if (verbose) {
+          console.log(
+            chalk.gray(
+              `  Hypothesis ${event.hypothesis.id} -> ${event.hypothesis.status} (${event.hypothesis.evidenceStrength}, confidence ${event.hypothesis.confidence}%)`
+            )
+          );
+        }
         break;
       case 'query_executing':
-        if (verbose) {
-          console.log(chalk.gray(`  Querying: ${event.query.tool} (${event.query.queryType})`));
+        queryCounter++;
+        console.log(
+          chalk.gray(`  Query ${queryCounter}: ${event.query.tool} (${event.query.queryType})`)
+        );
+        console.log(
+          chalk.gray(`    Params: ${formatQueryParameterPreview(event.query.parameters)}`)
+        );
+        if (verbose && event.query.expectedOutcome) {
+          console.log(chalk.gray(`    Expected: ${event.query.expectedOutcome}`));
         }
         break;
       case 'query_complete':
-        if (verbose) {
-          console.log(
-            chalk.green(`  ✓ Query complete: ${event.query.tool} (${event.query.queryType})`)
-          );
+        {
+          const summaryLines = summarizeInvestigationQueryResult(event.result);
+          if (summaryLines.length > 0) {
+            console.log(chalk.green(`    ✓ ${summaryLines[0]}`));
+            for (const line of summaryLines.slice(1)) {
+              console.log(chalk.gray(`      ${line}`));
+            }
+          } else {
+            console.log(
+              chalk.green(`    ✓ Query complete: ${event.query.tool} (${event.query.queryType})`)
+            );
+          }
         }
         break;
       case 'evidence_evaluated':
-        if (verbose) {
+        console.log(
+          chalk.yellow(
+            `  Evidence on ${event.evaluation.hypothesisId}: ${event.evaluation.evidenceStrength} (${event.evaluation.confidence}%) -> ${event.evaluation.action.toUpperCase()}`
+          )
+        );
+        if (event.evaluation.findings.length > 0) {
           console.log(
-            chalk.yellow(
-              `  Evidence: ${event.evaluation.evidenceStrength} (confidence ${event.evaluation.confidence}%)`
-            )
+            chalk.gray(`    Findings: ${event.evaluation.findings.slice(0, 3).join(' | ')}`)
           );
+        }
+        break;
+      case 'conclusion_reached':
+        console.log(chalk.green(`  Candidate root cause: ${event.conclusion.rootCause}`));
+        console.log(chalk.gray(`  Confidence: ${event.conclusion.confidence}`));
+        if (event.conclusion.affectedServices && event.conclusion.affectedServices.length > 0) {
+          console.log(chalk.gray(`  Scope: ${event.conclusion.affectedServices.join(', ')}`));
+        }
+        if (verbose && event.conclusion.unknowns.length > 0) {
+          console.log(chalk.gray(`  Unknowns: ${event.conclusion.unknowns.join(' | ')}`));
         }
         break;
       case 'error':
         console.log(chalk.red(`✗ ${event.phase}: ${event.error.message}`));
         break;
       case 'remediation_step':
-        if (verbose || autoRemediate) {
+        {
           const symbol = event.status === 'completed' ? '✓' : event.status === 'failed' ? '✗' : '→';
           console.log(
             chalk.magenta(`  ${symbol} Remediation: ${event.step.action} [${event.status}]`)
           );
+          if (verbose) {
+            const details = [
+              `risk=${event.step.riskLevel}`,
+              `approval=${event.step.requiresApproval ? 'required' : 'not required'}`,
+            ];
+            if (event.step.matchingSkill) {
+              details.push(`skill=${event.step.matchingSkill}`);
+            }
+            console.log(chalk.gray(`    ${details.join(' | ')}`));
+            if (event.step.error) {
+              console.log(chalk.red(`    Error: ${event.step.error}`));
+            }
+          }
         }
         break;
     }
@@ -384,7 +773,9 @@ async function runStructuredInvestigation(
   const result = await orchestrator.investigate(query);
 
   console.log();
+  console.log(chalk.green('Investigation Complete'));
   console.log(chalk.green('─'.repeat(40)));
+  console.log(chalk.gray(`Duration: ${(result.durationMs / 1000).toFixed(1)}s`));
   if (result.rootCause) {
     console.log(chalk.green(`Root Cause: ${result.rootCause}`));
   } else {
@@ -393,23 +784,45 @@ async function runStructuredInvestigation(
   if (result.confidence) {
     console.log(chalk.gray(`Confidence: ${result.confidence}`));
   }
+  if (result.affectedServices && result.affectedServices.length > 0) {
+    console.log(chalk.gray(`Affected Services: ${result.affectedServices.join(', ')}`));
+  }
 
   if (result.remediationPlan?.steps?.length) {
     console.log();
     console.log(chalk.cyan('Remediation Plan:'));
     result.remediationPlan.steps.forEach((step, index) => {
       console.log(chalk.cyan(`  ${index + 1}. ${step.action}`));
+      console.log(chalk.gray(`     Description: ${step.description}`));
       console.log(
         chalk.gray(
           `     Risk: ${step.riskLevel} | Approval: ${step.requiresApproval ? 'required' : 'not required'}`
         )
       );
+      if (step.matchingSkill) {
+        console.log(chalk.gray(`     Skill: ${step.matchingSkill}`));
+      }
+      if (step.matchingRunbook) {
+        console.log(chalk.gray(`     Runbook: ${step.matchingRunbook}`));
+      }
+      if (step.command) {
+        console.log(chalk.gray(`     Command: ${step.command}`));
+      }
+      if (step.rollbackCommand) {
+        console.log(chalk.gray(`     Rollback: ${step.rollbackCommand}`));
+      }
+      if (step.error) {
+        console.log(chalk.yellow(`     Status: ${step.status} (${step.error})`));
+      } else if (step.status && step.status !== 'pending') {
+        console.log(chalk.gray(`     Status: ${step.status}`));
+      }
     });
   }
 
   if (verbose) {
     console.log();
-    console.log(chalk.white(result.summary));
+    console.log(chalk.cyan('Detailed Summary:'));
+    printMarkdownToConsole(result.summary);
   }
 }
 
@@ -674,32 +1087,31 @@ knowledge
       const retriever = createRetriever();
       await retriever.sync();
 
-      // Get all documents and check their dates
-      const results = await retriever.search('*', { limit: 1000 });
-      const allDocs = [
-        ...results.runbooks,
-        ...results.postmortems,
-        ...results.knownIssues,
-        ...results.architecture,
-      ];
+      // Get all documents directly from the store for accurate counts.
+      const allDocs = retriever.getAllDocuments();
 
       const stale: Array<{ title: string; type: string; age: number }> = [];
       const fresh: Array<{ title: string; type: string }> = [];
 
-      // Group by document to avoid duplicates
-      const seen = new Set<string>();
-
       for (const doc of allDocs) {
-        if (seen.has(doc.documentId)) continue;
-        seen.add(doc.documentId);
+        const referenceDate = doc.lastValidated || doc.updatedAt || doc.createdAt;
+        const parsedReference = referenceDate ? new Date(referenceDate) : null;
 
-        // For now, assume documents without lastValidated are potentially stale
-        // In a full implementation, we'd track last validated date
+        if (
+          parsedReference &&
+          !Number.isNaN(parsedReference.getTime()) &&
+          parsedReference < staleDate
+        ) {
+          const age = Math.floor((Date.now() - parsedReference.getTime()) / (1000 * 60 * 60 * 24));
+          stale.push({ title: doc.title, type: doc.type, age });
+          continue;
+        }
+
         fresh.push({ title: doc.title, type: doc.type });
       }
 
       console.log(chalk.green(`\nKnowledge Base Status:`));
-      console.log(chalk.gray(`  Total documents: ${seen.size}`));
+      console.log(chalk.gray(`  Total documents: ${allDocs.length}`));
 
       if (stale.length > 0) {
         console.log(chalk.yellow(`\nStale documents (>${staleDays} days):`));
@@ -732,12 +1144,12 @@ knowledge
       const retriever = createRetriever();
       await retriever.sync();
 
-      const results = await retriever.search('*', { limit: 1000 });
+      const counts = retriever.getDocumentCountsByType();
 
-      console.log(chalk.cyan(`  Runbooks: ${results.runbooks.length}`));
-      console.log(chalk.cyan(`  Post-mortems: ${results.postmortems.length}`));
-      console.log(chalk.cyan(`  Architecture docs: ${results.architecture.length}`));
-      console.log(chalk.cyan(`  Known issues: ${results.knownIssues.length}`));
+      console.log(chalk.cyan(`  Runbooks: ${counts.runbook}`));
+      console.log(chalk.cyan(`  Post-mortems: ${counts.postmortem}`));
+      console.log(chalk.cyan(`  Architecture docs: ${counts.architecture}`));
+      console.log(chalk.cyan(`  Known issues: ${counts.known_issue}`));
       console.log(chalk.green(`  Total: ${retriever.getDocumentCount()} documents`));
 
       retriever.close();

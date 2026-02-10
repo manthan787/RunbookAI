@@ -694,5 +694,68 @@ describe('InvestigationStateMachine', () => {
       expect(summary).toContain('Severity: high');
       expect(summary).toContain('api, db');
     });
+
+    it('should prioritize proven hypotheses and de-emphasize rejected ones in summary', () => {
+      machine.start();
+
+      const proven = machine.addHypothesis({
+        statement: 'Redis connection pool exhaustion',
+        category: 'capacity',
+        priority: 1,
+        confirmingEvidence: 'Pool utilization near 100%',
+        refutingEvidence: 'Pool utilization normal',
+        queries: [],
+      });
+
+      const rejected = machine.addHypothesis({
+        statement: 'Lambda cold starts are the main cause',
+        category: 'infrastructure',
+        priority: 2,
+        confirmingEvidence: 'Cold starts strongly correlated with errors',
+        refutingEvidence: 'Cold starts minimal during incident',
+        queries: [],
+      });
+
+      const pending = machine.addHypothesis({
+        statement: 'Third-party dependency timeout',
+        category: 'dependency',
+        priority: 3,
+        confirmingEvidence: 'Dependency latency spike',
+        refutingEvidence: 'Dependency response time normal',
+        queries: [],
+      });
+
+      machine.applyEvaluation({
+        hypothesisId: proven.id,
+        evidenceStrength: 'strong',
+        confidence: 92,
+        reasoning:
+          'Error spikes align with pool saturation and recover after recycling connections.',
+        action: 'confirm',
+        findings: [],
+      });
+
+      machine.applyEvaluation({
+        hypothesisId: rejected.id,
+        evidenceStrength: 'none',
+        confidence: 8,
+        reasoning: 'Cold-start metrics are normal during the incident window.',
+        action: 'prune',
+        findings: [],
+      });
+
+      const summary = machine.getSummary();
+
+      expect(summary).toContain('### Proven');
+      expect(summary).toContain('✅ [PROVEN] Redis connection pool exhaustion');
+      expect(summary).toContain('### Still Evaluating');
+      expect(summary).toContain('- [pending] Third-party dependency timeout');
+      expect(summary).toContain('### Rejected / Deprioritized');
+      expect(summary).toContain('- [rejected] Lambda cold starts are the main cause');
+      expect(summary).not.toContain('Cold-start metrics are normal during the incident window.');
+      expect(summary.indexOf('### Proven')).toBeLessThan(
+        summary.indexOf('### Rejected / Deprioritized')
+      );
+    });
   });
 });

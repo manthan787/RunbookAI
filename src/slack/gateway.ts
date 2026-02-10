@@ -105,7 +105,12 @@ export function parseSlackMentionCommand(text: string): ParsedMentionCommand | n
   const [rawCommand, ...rest] = withoutMentions.split(/\s+/);
   const command = rawCommand.toLowerCase();
 
-  if (command !== 'infra' && command !== 'knowledge' && command !== 'deploy' && command !== 'investigate') {
+  if (
+    command !== 'infra' &&
+    command !== 'knowledge' &&
+    command !== 'deploy' &&
+    command !== 'investigate'
+  ) {
     return null;
   }
 
@@ -243,8 +248,7 @@ function verifySlackSignature(
   }
 
   const sigBaseString = `v0:${timestamp}:${body}`;
-  const expected =
-    'v0=' + createHmac('sha256', signingSecret).update(sigBaseString).digest('hex');
+  const expected = 'v0=' + createHmac('sha256', signingSecret).update(sigBaseString).digest('hex');
 
   try {
     return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
@@ -258,12 +262,14 @@ function createAgentKnowledgeRetriever() {
 
   return {
     retrieve: async (context: {
+      query?: string;
       incidentId?: string;
       services: string[];
       symptoms: string[];
       errorMessages: string[];
     }) => {
       const queryParts = [
+        context.query,
         context.incidentId,
         ...context.services,
         ...context.symptoms,
@@ -288,7 +294,7 @@ async function createRuntimeAgent(config: Config): Promise<Agent> {
 
   await skillRegistry.loadUserSkills();
   const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
-  const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+  const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
 
   return new Agent({
     llm,
@@ -303,9 +309,7 @@ async function createRuntimeAgent(config: Config): Promise<Agent> {
   });
 }
 
-export async function executeSlackRequestWithRuntime(
-  request: RoutedSlackRequest
-): Promise<string> {
+export async function executeSlackRequestWithRuntime(request: RoutedSlackRequest): Promise<string> {
   const config = await loadConfig();
   const agent = await createRuntimeAgent(config);
 
@@ -329,7 +333,7 @@ async function getBotUserId(botToken: string): Promise<string> {
     body: JSON.stringify({}),
   });
 
-  const data = await response.json() as { ok: boolean; user_id?: string; error?: string };
+  const data = (await response.json()) as { ok: boolean; user_id?: string; error?: string };
   if (!data.ok || !data.user_id) {
     throw new Error(`Slack auth.test failed: ${data.error || 'unknown error'}`);
   }
@@ -458,7 +462,7 @@ async function openSocketModeUrl(appToken: string): Promise<string> {
     body: JSON.stringify({}),
   });
 
-  const data = await response.json() as { ok: boolean; url?: string; error?: string };
+  const data = (await response.json()) as { ok: boolean; url?: string; error?: string };
   if (!data.ok || !data.url) {
     throw new Error(`Slack apps.connections.open failed: ${data.error || 'unknown error'}`);
   }
@@ -527,7 +531,7 @@ async function startSocketMode(
 export async function startSlackGateway(options: SlackGatewayOptions): Promise<void> {
   configureSlack(options.botToken);
 
-  const botUserId = options.botUserId || await getBotUserId(options.botToken);
+  const botUserId = options.botUserId || (await getBotUserId(options.botToken));
   const dedupe = new EventDedupeCache();
   const opts = {
     ...options,

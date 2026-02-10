@@ -219,6 +219,43 @@ export class KnowledgeStore {
   }
 
   /**
+   * Get all documents.
+   */
+  getAllDocuments(): KnowledgeDocument[] {
+    const stmt = this.db.prepare('SELECT * FROM documents');
+    const rows = stmt.all() as Array<Record<string, unknown>>;
+    return rows.map((row) => this.rowToDocument(row));
+  }
+
+  /**
+   * Get document counts grouped by type.
+   */
+  getDocumentCountsByType(): Record<KnowledgeType, number> {
+    const counts: Record<KnowledgeType, number> = {
+      runbook: 0,
+      postmortem: 0,
+      architecture: 0,
+      ownership: 0,
+      known_issue: 0,
+      environment: 0,
+      playbook: 0,
+      faq: 0,
+    };
+
+    const stmt = this.db.prepare('SELECT type, COUNT(*) as count FROM documents GROUP BY type');
+    const rows = stmt.all() as Array<{ type: string; count: number }>;
+
+    for (const row of rows) {
+      const type = row.type as KnowledgeType;
+      if (type in counts) {
+        counts[type] = row.count;
+      }
+    }
+
+    return counts;
+  }
+
+  /**
    * Get a document by ID
    */
   getDocument(id: string): KnowledgeDocument | null {

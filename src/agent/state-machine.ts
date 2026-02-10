@@ -582,11 +582,37 @@ export class InvestigationStateMachine extends EventEmitter {
 
     if (this.state.hypotheses.length > 0) {
       lines.push('## Hypotheses');
-      for (const h of this.state.hypotheses) {
-        const icon = h.status === 'confirmed' ? '✓' : h.status === 'pruned' ? '✗' : '○';
-        lines.push(`${icon} [${h.status}] ${h.statement}`);
+
+      const proven = this.state.hypotheses.filter((h) => h.status === 'confirmed');
+      const evaluating = this.state.hypotheses.filter(
+        (h) => h.status === 'pending' || h.status === 'investigating'
+      );
+      const rejected = this.state.hypotheses.filter((h) => h.status === 'pruned');
+
+      lines.push('### Proven');
+      if (proven.length === 0) {
+        lines.push('None confirmed yet.');
+      }
+      for (const h of proven) {
+        lines.push(`✅ [PROVEN] ${h.statement}`);
         if (h.reasoning) {
           lines.push(`  Reasoning: ${h.reasoning}`);
+        }
+      }
+
+      if (evaluating.length > 0) {
+        lines.push('');
+        lines.push('### Still Evaluating');
+        for (const h of evaluating) {
+          lines.push(`- [${h.status}] ${h.statement}`);
+        }
+      }
+
+      if (rejected.length > 0) {
+        lines.push('');
+        lines.push('### Rejected / Deprioritized');
+        for (const h of rejected) {
+          lines.push(`- [rejected] ${h.statement}`);
         }
       }
       lines.push('');

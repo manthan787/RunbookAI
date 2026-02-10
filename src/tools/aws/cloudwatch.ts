@@ -28,7 +28,9 @@ function getCloudWatchClient(region?: string): CloudWatchClient {
 
 function getLogsClient(region?: string): CloudWatchLogsClient {
   if (!logsClient || region) {
-    logsClient = new CloudWatchLogsClient({ region: region || process.env.AWS_REGION || 'us-east-1' });
+    logsClient = new CloudWatchLogsClient({
+      region: region || process.env.AWS_REGION || 'us-east-1',
+    });
   }
   return logsClient;
 }
@@ -49,6 +51,10 @@ export interface AlarmInfo {
   threshold: number;
   comparisonOperator: string;
   updatedTimestamp: Date | undefined;
+  dimensions: Array<{
+    name: string;
+    value: string;
+  }>;
 }
 
 export interface LogEvent {
@@ -120,6 +126,10 @@ export async function describeAlarms(
     threshold: alarm.Threshold || 0,
     comparisonOperator: alarm.ComparisonOperator || '',
     updatedTimestamp: alarm.StateUpdatedTimestamp,
+    dimensions: (alarm.Dimensions || []).map((dimension) => ({
+      name: dimension.Name || '',
+      value: dimension.Value || '',
+    })),
   }));
 }
 
@@ -224,8 +234,26 @@ export async function getServiceMetrics(
   ];
 
   const [cpu, memory] = await Promise.all([
-    getMetricStatistics('AWS/ECS', 'CPUUtilization', dimensions, startTime, endTime, 300, ['Average'], region),
-    getMetricStatistics('AWS/ECS', 'MemoryUtilization', dimensions, startTime, endTime, 300, ['Average'], region),
+    getMetricStatistics(
+      'AWS/ECS',
+      'CPUUtilization',
+      dimensions,
+      startTime,
+      endTime,
+      300,
+      ['Average'],
+      region
+    ),
+    getMetricStatistics(
+      'AWS/ECS',
+      'MemoryUtilization',
+      dimensions,
+      startTime,
+      endTime,
+      300,
+      ['Average'],
+      region
+    ),
   ]);
 
   return {

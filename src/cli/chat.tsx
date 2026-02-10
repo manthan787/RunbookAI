@@ -90,7 +90,7 @@ export function ChatInterface() {
 
       await skillRegistry.loadUserSkills();
       const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
-      const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+      const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
       const retriever = createRetriever();
 
       const newAgent = new Agent({
@@ -100,6 +100,7 @@ export function ChatInterface() {
         knowledgeRetriever: {
           retrieve: async (context) => {
             const queryParts = [
+              context.query,
               context.incidentId,
               ...context.services,
               ...context.symptoms,

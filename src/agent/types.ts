@@ -126,6 +126,7 @@ export interface Hypothesis {
 }
 
 export interface InvestigationContext {
+  query?: string;
   incidentId?: string;
   services: string[];
   symptoms: string[];
@@ -254,4 +255,5 @@ export interface KnowledgeChunk {
   type: string;
   services: string[];
   score: number;
+  sourceUrl?: string;
 }

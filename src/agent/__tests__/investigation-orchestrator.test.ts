@@ -382,7 +382,7 @@ describe('InvestigationOrchestrator', () => {
       expect(result.remediationPlan?.steps[0]?.status).toBe('completed');
     });
 
-    it('should skip command-only remediation steps instead of calling unsupported tools', async () => {
+    it('should mark command-only remediation steps as pending manual execution', async () => {
       let callIndex = 0;
       const complete = vi.fn().mockImplementation(async () => {
         callIndex++;
@@ -412,10 +412,48 @@ describe('InvestigationOrchestrator', () => {
       const invokedTools = execute.mock.calls.map((call) => call[0]);
       expect(invokedTools).not.toContain('execute_command');
       expect(invokedTools).not.toContain('invoke_skill');
-      expect(result.remediationPlan?.steps[0]?.status).toBe('skipped');
-      expect(result.remediationPlan?.steps[0]?.error).toContain(
-        'Direct command execution is disabled'
+      expect(result.remediationPlan?.steps[0]?.status).toBe('pending');
+      expect(result.remediationPlan?.steps[0]?.error).toContain('Manual execution required');
+    });
+
+    it('should execute skill-based remediation when user approval callback approves', async () => {
+      let callIndex = 0;
+      const complete = vi.fn().mockImplementation(async () => {
+        callIndex++;
+        if (callIndex === 1) return mockTriageResponse;
+        if (callIndex === 2) return mockHypothesisResponse;
+        if (callIndex === 3) return mockEvidenceEvaluationConfirm;
+        if (callIndex === 4) return mockConclusionResponse;
+        if (callIndex === 5) return mockRemediationWithSkillResponse;
+        return mockEvidenceEvaluationPrune;
+      });
+      const llm: LLMClient = { complete };
+
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'cloudwatch_logs') return [{ message: 'Connection timeout after 30s' }];
+        if (tool === 'datadog') return { metrics: { cpu: 45, memory: 80 } };
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        if (tool === 'skill') return { ok: true };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const approveRemediationStep = vi.fn().mockResolvedValue(true);
+      const orchestrator = createOrchestrator(llm, toolExecutor, {
+        autoApproveRemediation: false,
+        approveRemediationStep,
+      });
+      const result = await orchestrator.investigate('Why is the API slow?');
+
+      expect(approveRemediationStep).toHaveBeenCalled();
+      expect(execute).toHaveBeenCalledWith(
+        'skill',
+        expect.objectContaining({
+          name: 'deploy-service',
+        })
       );
+      expect(result.remediationPlan?.steps[0]?.status).toBe('completed');
     });
   });
 
@@ -433,6 +471,102 @@ describe('InvestigationOrchestrator', () => {
       const triageEvent = events.find((e) => e.type === 'triage_complete');
       // Triage should include incident ID (passed through)
       expect(triageEvent).toBeDefined();
+    });
+
+    it('should fetch incident context using the provided incident ID during triage', async () => {
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'pagerduty_get_incident') {
+          return {
+            incident: {
+              id: 'INC-456',
+              title: 'High error rate in API',
+              status: 'triggered',
+            },
+          };
+        }
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'cloudwatch_logs') return [{ message: 'Connection timeout after 30s' }];
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const orchestrator = createOrchestrator(mockLLM, toolExecutor, {
+        incidentId: 'INC-456',
+        availableTools: ['pagerduty_get_incident', 'cloudwatch_alarms', 'cloudwatch_logs'],
+      });
+
+      await orchestrator.investigate('Investigate incident');
+
+      expect(execute).toHaveBeenCalledWith('pagerduty_get_incident', {
+        incident_id: 'INC-456',
+      });
+    });
+
+    it('should query runbooks during triage when search_knowledge is available', async () => {
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'search_knowledge') {
+          return {
+            documentCount: 1,
+            runbooks: [
+              { title: 'Redis Timeout Runbook', content: 'Check connection pool settings' },
+            ],
+          };
+        }
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const orchestrator = createOrchestrator(mockLLM, toolExecutor, {
+        incidentId: 'INC-456',
+        availableTools: ['search_knowledge', 'cloudwatch_alarms', 'aws_query'],
+      });
+
+      await orchestrator.investigate('Investigate redis timeouts in production');
+
+      expect(execute).toHaveBeenCalledWith(
+        'search_knowledge',
+        expect.objectContaining({
+          query: expect.stringContaining('Investigate redis timeouts in production'),
+          type_filter: ['runbook', 'known_issue'],
+        })
+      );
+    });
+
+    it('should keep knowledge supplemental by continuing to telemetry and avoid incident ID in knowledge query', async () => {
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'search_knowledge') {
+          return {
+            documentCount: 1,
+            runbooks: [
+              { title: 'Redis Timeout Runbook', content: 'Check connection pool settings' },
+            ],
+          };
+        }
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighErrorRate', state: 'ALARM' }];
+        if (tool === 'aws_query') return { services: ['lambda'], status: 'running' };
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const incidentId = 'Q2POX0UC7OBO7M';
+      const orchestrator = createOrchestrator(mockLLM, toolExecutor, {
+        incidentId,
+        availableTools: ['search_knowledge', 'cloudwatch_alarms', 'aws_query'],
+      });
+
+      await orchestrator.investigate(
+        `Investigate incident ${incidentId}. Identify the root cause with supporting evidence.`
+      );
+
+      const knowledgeCall = execute.mock.calls.find((call) => call[0] === 'search_knowledge');
+      expect(knowledgeCall).toBeDefined();
+      const knowledgeParams = (knowledgeCall?.[1] ?? {}) as Record<string, unknown>;
+      expect(String(knowledgeParams.query)).not.toContain(incidentId);
+
+      expect(execute).toHaveBeenCalledWith('cloudwatch_alarms', { state: 'ALARM' });
     });
 
     it('should respect max iterations', async () => {

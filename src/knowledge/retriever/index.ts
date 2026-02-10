@@ -13,6 +13,7 @@ import type {
   KnowledgeType,
   KnowledgeSourceConfig,
   FilesystemSourceConfig,
+  KnowledgeDocument,
 } from '../types';
 
 export interface RetrieverConfig {
@@ -139,6 +140,20 @@ export class KnowledgeRetriever {
    */
   getDocumentCount(): number {
     return this.store.getDocumentCount();
+  }
+
+  /**
+   * Get document counts grouped by type.
+   */
+  getDocumentCountsByType(): Record<KnowledgeType, number> {
+    return this.store.getDocumentCountsByType();
+  }
+
+  /**
+   * Get all stored documents.
+   */
+  getAllDocuments(): KnowledgeDocument[] {
+    return this.store.getAllDocuments();
   }
 
   /**

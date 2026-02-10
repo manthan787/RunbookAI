@@ -497,6 +497,15 @@ Available Skills:
 Available Runbooks:
 {runbooks}
 
+Requirements:
+- Steps must be actionable and specific for the affected services above.
+- Every step must include either:
+  1) matchingSkill (preferred when available), or
+  2) a concrete command with exact resource names/IDs (no placeholders like <service>).
+- If command is provided, include rollbackCommand whenever rollback is possible.
+- Use available runbooks to shape procedures and set matchingRunbook when relevant.
+- Avoid vague steps such as "check logs" or "investigate further" without concrete actions.
+
 Respond with a JSON object matching this schema:
 - steps: Array of remediation steps, each with:
   - action: What to do

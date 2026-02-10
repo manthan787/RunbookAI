@@ -80,6 +80,7 @@ export interface InvestigationOptions {
   incidentId?: string;
   maxIterations?: number;
   autoApproveRemediation?: boolean;
+  approveRemediationStep?: (step: RemediationStep) => Promise<boolean>;
   knownServices?: string[];
   availableTools?: string[];
   slackChannel?: string;
@@ -133,6 +134,8 @@ export class InvestigationOrchestrator {
   private readonly options: InvestigationOptions;
   private readonly eventHandlers: InvestigationEventHandler[] = [];
   private readonly availableTools?: Set<string>;
+  private inferredLambdaFunctionName?: string;
+  private inferredCloudWatchLogGroup?: string;
 
   constructor(llm: LLMClient, toolExecutor: ToolExecutor, options: InvestigationOptions = {}) {
     this.llm = llm;
@@ -176,6 +179,241 @@ export class InvestigationOrchestrator {
     return this.availableTools.has(toolName);
   }
 
+  private extractLambdaNameFromArn(value: string): string | null {
+    const marker = 'function:';
+    const idx = value.indexOf(marker);
+    if (idx === -1) {
+      return null;
+    }
+    return value.slice(idx + marker.length).trim() || null;
+  }
+
+  private parseLambdaFunctionName(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    return this.extractLambdaNameFromArn(trimmed) || trimmed;
+  }
+
+  private setLambdaContext(functionName: string): void {
+    this.inferredLambdaFunctionName = functionName;
+    this.inferredCloudWatchLogGroup = `/aws/lambda/${functionName}`;
+  }
+
+  private extractLambdaFromAlarmDimensions(alarm: Record<string, unknown>): string | null {
+    const dimensions = alarm.dimensions;
+    if (!Array.isArray(dimensions)) {
+      return null;
+    }
+
+    for (const dimension of dimensions) {
+      if (!dimension || typeof dimension !== 'object') {
+        continue;
+      }
+      const item = dimension as Record<string, unknown>;
+      const name = item.name ?? item.Name;
+      const value = item.value ?? item.Value;
+      if (name === 'FunctionName') {
+        const functionName = this.parseLambdaFunctionName(value);
+        if (functionName) {
+          return functionName;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private updateCloudWatchHints(
+    toolName: string,
+    result: unknown,
+    parameters?: Record<string, unknown>
+  ): void {
+    const explicitLogGroup =
+      parameters && typeof parameters.log_group === 'string' ? parameters.log_group.trim() : '';
+    if (explicitLogGroup) {
+      this.inferredCloudWatchLogGroup = explicitLogGroup;
+      const prefix = '/aws/lambda/';
+      if (explicitLogGroup.startsWith(prefix)) {
+        this.inferredLambdaFunctionName = explicitLogGroup.slice(prefix.length);
+      }
+      return;
+    }
+
+    if (!result || typeof result !== 'object') {
+      return;
+    }
+
+    if (toolName === 'cloudwatch_alarms') {
+      const alarms = Array.isArray(result)
+        ? result
+        : Array.isArray((result as Record<string, unknown>).alarms)
+          ? ((result as Record<string, unknown>).alarms as unknown[])
+          : [];
+
+      for (const alarm of alarms) {
+        if (!alarm || typeof alarm !== 'object') {
+          continue;
+        }
+        const functionName = this.extractLambdaFromAlarmDimensions(
+          alarm as Record<string, unknown>
+        );
+        if (functionName) {
+          this.setLambdaContext(functionName);
+          return;
+        }
+      }
+      return;
+    }
+
+    if (toolName !== 'aws_query') {
+      return;
+    }
+
+    const obj = result as Record<string, unknown>;
+    const results = obj.results;
+    if (!results || typeof results !== 'object') {
+      return;
+    }
+
+    const lambda = (results as Record<string, unknown>).lambda;
+    if (!lambda || typeof lambda !== 'object') {
+      return;
+    }
+
+    const resources = (lambda as Record<string, unknown>).resources;
+    if (!Array.isArray(resources)) {
+      return;
+    }
+
+    const preferredDemoFunction = process.env.RUNBOOK_DEMO_FUNCTION?.trim();
+    let discovered: string | null = null;
+
+    for (const resource of resources) {
+      if (!resource || typeof resource !== 'object') {
+        continue;
+      }
+      const item = resource as Record<string, unknown>;
+      const candidate =
+        this.parseLambdaFunctionName(item.name) ||
+        this.parseLambdaFunctionName(item.functionName) ||
+        this.parseLambdaFunctionName(item.FunctionName) ||
+        this.parseLambdaFunctionName(item.id);
+
+      if (!candidate) {
+        continue;
+      }
+
+      if (preferredDemoFunction && candidate === preferredDemoFunction) {
+        discovered = candidate;
+        break;
+      }
+
+      if (!discovered) {
+        discovered = candidate;
+      }
+    }
+
+    if (discovered) {
+      this.setLambdaContext(discovered);
+    }
+  }
+
+  private enrichCloudwatchLogsQuery(query: CausalQuery): CausalQuery {
+    if (query.tool !== 'cloudwatch_logs') {
+      return query;
+    }
+
+    const params: Record<string, unknown> = {
+      ...query.parameters,
+    };
+
+    if (!params.log_group) {
+      const demoLogGroup = process.env.RUNBOOK_DEMO_LOG_GROUP?.trim();
+      const demoFunction = process.env.RUNBOOK_DEMO_FUNCTION?.trim();
+      const inferredLogGroup = this.inferredCloudWatchLogGroup?.trim();
+      const inferredFunction = this.inferredLambdaFunctionName?.trim();
+
+      if (inferredLogGroup) {
+        params.log_group = inferredLogGroup;
+      } else if (demoLogGroup) {
+        params.log_group = demoLogGroup;
+      } else if (inferredFunction) {
+        params.log_group = `/aws/lambda/${inferredFunction}`;
+      } else if (demoFunction) {
+        params.log_group = `/aws/lambda/${demoFunction}`;
+      }
+    }
+
+    if (!params.minutes_back) {
+      params.minutes_back = 60;
+    }
+
+    return {
+      ...query,
+      parameters: params,
+    };
+  }
+
+  private hasMeaningfulTriageSignal(toolName: string, result: unknown): boolean {
+    if (!result || typeof result !== 'object') {
+      return false;
+    }
+
+    const obj = result as Record<string, unknown>;
+    if (obj.error) {
+      return false;
+    }
+
+    if (toolName === 'cloudwatch_alarms') {
+      if (typeof obj.count === 'number') {
+        return obj.count > 0;
+      }
+      if (Array.isArray(obj.alarms)) {
+        return obj.alarms.length > 0;
+      }
+      if (Array.isArray(result)) {
+        return (result as unknown[]).length > 0;
+      }
+      return false;
+    }
+
+    if (toolName === 'datadog') {
+      if (typeof obj.count === 'number') {
+        return obj.count > 0;
+      }
+      if (Array.isArray(obj.triggeredMonitors)) {
+        return obj.triggeredMonitors.length > 0;
+      }
+      return false;
+    }
+
+    if (toolName === 'search_knowledge') {
+      // Knowledge is supplemental context; always continue to fetch live telemetry.
+      return false;
+    }
+
+    if (toolName === 'aws_query') {
+      const total = obj.totalResources;
+      if (typeof total === 'number') {
+        return total > 0;
+      }
+      const results = obj.results;
+      if (results && typeof results === 'object') {
+        return Object.keys(results as Record<string, unknown>).length > 0;
+      }
+      return false;
+    }
+
+    return true;
+  }
+
   private buildFallbackQuery(original: CausalQuery, fallbackTool: string): CausalQuery {
     const fallbackParams: Record<string, unknown> = {
       ...original.parameters,
@@ -202,7 +440,7 @@ export class InvestigationOrchestrator {
 
   private adaptQueryToEnvironment(query: CausalQuery): CausalQuery | null {
     if (this.isToolAvailable(query.tool)) {
-      return query;
+      return this.enrichCloudwatchLogsQuery(query);
     }
 
     const fallbackOrder: Record<string, string[]> = {
@@ -216,7 +454,7 @@ export class InvestigationOrchestrator {
     const fallbacks = fallbackOrder[query.tool] || [];
     for (const fallbackTool of fallbacks) {
       if (this.isToolAvailable(fallbackTool)) {
-        return this.buildFallbackQuery(query, fallbackTool);
+        return this.enrichCloudwatchLogsQuery(this.buildFallbackQuery(query, fallbackTool));
       }
     }
 
@@ -269,6 +507,29 @@ export class InvestigationOrchestrator {
       return emptyMessage;
     }
     return items.map((item) => `- ${item}`).join('\n');
+  }
+
+  private buildKnowledgeSearchQuery(query: string): string {
+    let cleaned = query.trim();
+
+    if (this.options.incidentId) {
+      const escapedIncidentId = this.options.incidentId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      cleaned = cleaned.replace(new RegExp(escapedIncidentId, 'gi'), ' ');
+    }
+
+    cleaned = cleaned
+      .replace(/\binvestigate incident\b/gi, ' ')
+      .replace(/\bidentify the root cause with supporting evidence\b/gi, ' ')
+      .replace(/\bhypothesis-driven investigation\b/gi, ' ')
+      .replace(/[^\w\s:/.-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleaned || cleaned.split(' ').length < 3) {
+      return 'production incident runbook known issue remediation';
+    }
+
+    return `${cleaned} runbook known issue remediation`;
   }
 
   private async resolveRelevantRunbooks(context: RemediationContext): Promise<string[]> {
@@ -410,6 +671,7 @@ export class InvestigationOrchestrator {
    */
   private async gatherTriageContext(query: string, additionalContext?: string): Promise<string> {
     const contextParts: string[] = [];
+    let triageQueryIndex = 0;
 
     contextParts.push(`Query: ${query}`);
 
@@ -417,24 +679,112 @@ export class InvestigationOrchestrator {
       contextParts.push(`Additional Context: ${additionalContext}`);
     }
 
+    // Seed triage with the explicit incident context from CLI input.
+    if (this.options.incidentId) {
+      const incidentContextSources: Array<{
+        tool: string;
+        params: Record<string, unknown>;
+        label: string;
+      }> = [
+        {
+          tool: 'pagerduty_get_incident',
+          params: { incident_id: this.options.incidentId },
+          label: 'Incident Context (PagerDuty)',
+        },
+        {
+          tool: 'opsgenie_get_incident',
+          params: { incident_id: this.options.incidentId },
+          label: 'Incident Context (OpsGenie)',
+        },
+      ];
+
+      for (const source of incidentContextSources) {
+        if (!this.isToolAvailable(source.tool)) {
+          continue;
+        }
+
+        const triageQuery: CausalQuery = {
+          id: `triage_${++triageQueryIndex}_${source.tool}`,
+          hypothesisId: 'triage',
+          queryType: 'exploratory',
+          tool: source.tool,
+          parameters: source.params,
+          expectedOutcome: source.label,
+          relevanceScore: 0.9,
+        };
+        this.emit({ type: 'query_executing', query: triageQuery });
+
+        try {
+          const result = await this.toolExecutor.execute(source.tool, source.params);
+          this.emit({ type: 'query_complete', query: triageQuery, result });
+          if (result && typeof result === 'object' && !(result as Record<string, unknown>).error) {
+            contextParts.push(`${source.label}: ${JSON.stringify(result)}`);
+            break;
+          }
+        } catch (error) {
+          this.emit({
+            type: 'query_complete',
+            query: triageQuery,
+            result: { error: error instanceof Error ? error.message : String(error) },
+          });
+          // Try next incident provider source.
+        }
+      }
+    }
+
     // Try to gather some initial context from tools
     const triageSources: Array<{ tool: string; params: Record<string, unknown>; label: string }> = [
+      {
+        tool: 'search_knowledge',
+        params: {
+          query: this.buildKnowledgeSearchQuery(query),
+          type_filter: ['runbook', 'known_issue'],
+        },
+        label: 'Supplemental Runbooks and Known Issues',
+      },
       { tool: 'cloudwatch_alarms', params: { state: 'ALARM' }, label: 'Active Alarms' },
       { tool: 'datadog', params: { action: 'monitors' }, label: 'Triggered Monitors' },
-      { tool: 'aws_query', params: { services: ['cloudwatch'] }, label: 'Cloud Provider Status' },
+      {
+        tool: 'aws_query',
+        params: {
+          query: 'List CloudWatch and Lambda resources related to active incidents',
+          services: ['cloudwatch', 'lambda'],
+          limit: 10,
+        },
+        label: 'Cloud Provider Status',
+      },
     ];
 
     for (const source of triageSources) {
       if (!this.isToolAvailable(source.tool)) {
         continue;
       }
+      const triageQuery: CausalQuery = {
+        id: `triage_${++triageQueryIndex}_${source.tool}`,
+        hypothesisId: 'triage',
+        queryType: 'exploratory',
+        tool: source.tool,
+        parameters: source.params,
+        expectedOutcome: source.label,
+        relevanceScore: 0.7,
+      };
+      this.emit({ type: 'query_executing', query: triageQuery });
       try {
         const result = await this.toolExecutor.execute(source.tool, source.params);
+        this.emit({ type: 'query_complete', query: triageQuery, result });
+        this.updateCloudWatchHints(source.tool, result, source.params);
         if (result) {
           contextParts.push(`${source.label}: ${JSON.stringify(result)}`);
-          break;
+          if (this.hasMeaningfulTriageSignal(source.tool, result)) {
+            break;
+          }
         }
-      } catch {
+      } catch (error) {
+        this.emit({
+          type: 'query_complete',
+          query: triageQuery,
+          result: { error: error instanceof Error ? error.message : String(error) },
+        });
         // Try next fallback source
       }
     }
@@ -557,6 +907,7 @@ export class InvestigationOrchestrator {
           runnableQuery.tool,
           runnableQuery.parameters
         );
+        this.updateCloudWatchHints(runnableQuery.tool, result, runnableQuery.parameters);
         results.set(runnableQuery.id, result);
         machine.recordQueryResult(hypothesis.id, runnableQuery.id, result);
 
@@ -700,8 +1051,9 @@ export class InvestigationOrchestrator {
 
     machine.setRemediationPlan(plan);
 
-    // Execute remediation steps if auto-approve is enabled
-    if (this.options.autoApproveRemediation) {
+    // Execute remediation steps when auto-remediation is enabled
+    // or when an interactive approval callback is provided.
+    if (this.options.autoApproveRemediation || this.options.approveRemediationStep) {
       await this.executeRemediation(machine, plan);
     }
   }
@@ -714,8 +1066,34 @@ export class InvestigationOrchestrator {
     plan: RemediationPlan
   ): Promise<void> {
     for (const step of plan.steps) {
-      if (step.requiresApproval && !this.options.autoApproveRemediation) {
-        machine.updateRemediationStep(step.id, { status: 'pending' });
+      if (step.command && !step.matchingSkill) {
+        machine.updateRemediationStep(step.id, {
+          status: 'pending',
+          error:
+            'Manual execution required. This step has a command but no mapped skill for automatic execution.',
+        });
+        continue;
+      }
+
+      if (!this.options.autoApproveRemediation) {
+        const approved = this.options.approveRemediationStep
+          ? await this.options.approveRemediationStep(step)
+          : false;
+
+        if (!approved) {
+          machine.updateRemediationStep(step.id, {
+            status: 'pending',
+            error: 'Awaiting user approval for execution.',
+          });
+          continue;
+        }
+      }
+
+      if (!step.matchingSkill) {
+        machine.updateRemediationStep(step.id, {
+          status: 'skipped',
+          error: 'No execution method available',
+        });
         continue;
       }
 
@@ -723,42 +1101,29 @@ export class InvestigationOrchestrator {
       this.emit({ type: 'remediation_step', step, status: 'executing' });
 
       try {
-        if (step.matchingSkill) {
-          const result = await this.toolExecutor.execute('skill', {
-            name: step.matchingSkill,
-            args: {
-              action: step.action,
-              description: step.description,
-              command: step.command,
-              rollbackCommand: step.rollbackCommand,
-            },
-          });
+        const result = await this.toolExecutor.execute('skill', {
+          name: step.matchingSkill,
+          args: {
+            action: step.action,
+            description: step.description,
+            command: step.command,
+            rollbackCommand: step.rollbackCommand,
+          },
+        });
 
-          if (
-            typeof result === 'object' &&
-            result !== null &&
-            'error' in result &&
-            typeof (result as { error?: unknown }).error === 'string'
-          ) {
-            throw new Error((result as { error: string }).error);
-          }
-
-          machine.updateRemediationStep(step.id, {
-            status: 'completed',
-            result,
-          });
-        } else if (step.command) {
-          machine.updateRemediationStep(step.id, {
-            status: 'skipped',
-            error:
-              'Direct command execution is disabled for auto-remediation. Execute manually or map this step to a skill.',
-          });
-        } else {
-          machine.updateRemediationStep(step.id, {
-            status: 'skipped',
-            error: 'No execution method available',
-          });
+        if (
+          typeof result === 'object' &&
+          result !== null &&
+          'error' in result &&
+          typeof (result as { error?: unknown }).error === 'string'
+        ) {
+          throw new Error((result as { error: string }).error);
         }
+
+        machine.updateRemediationStep(step.id, {
+          status: 'completed',
+          result,
+        });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         machine.updateRemediationStep(step.id, {

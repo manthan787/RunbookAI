@@ -314,7 +314,7 @@ async function main() {
 
     await skillRegistry.loadUserSkills();
     const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
-    const runtimeTools = getRuntimeTools(config, toolRegistry.getAll());
+    const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
     const toolsByName = new Map(runtimeTools.map((tool) => [tool.name, tool]));
 
     executeInvestigation = async (
