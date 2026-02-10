@@ -68,6 +68,7 @@ describe('Agent runbook citations', () => {
       'What should I do when I see redis connection timeouts in prod?'
     );
 
+    // Knowledge-first path still uses the old buildRunbookCitationSection format
     expect(answer).toContain('## Runbook References');
     expect(answer).toContain('1. Redis Timeout Runbook');
     const mentionCount = (answer.match(/Redis Timeout Runbook/g) || []).length;
@@ -118,8 +119,9 @@ describe('Agent runbook citations', () => {
     const answer = await runAndGetAnswer(agent, 'Summarize redis timeout incident patterns');
 
     expect(answer).toContain('Common causes include pool saturation and network jitter.');
-    expect(answer).toContain('## Runbook References');
-    expect(answer).toContain('1. Redis Timeout Runbook');
+    // New citation format uses "## Sources" with type labels
+    expect(answer).toContain('## Sources');
+    expect(answer).toContain('[Runbook] Redis Timeout Runbook');
     expect((llm.chat as ReturnType<typeof vi.fn>).mock.calls.length).toBe(2);
   });
 
@@ -148,6 +150,7 @@ describe('Agent runbook citations', () => {
 
     const answer = await runAndGetAnswer(agent, 'Summarize current redis error trends');
 
+    expect(answer).not.toContain('## Sources');
     expect(answer).not.toContain('## Runbook References');
   });
 });

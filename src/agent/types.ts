@@ -17,6 +17,8 @@ export type AgentEvent =
   | ContextClearedEvent
   | KnowledgeRetrievedEvent
   | AnswerStartEvent
+  | AnswerChunkEvent
+  | ExplainStepEvent
   | DoneEvent;
 
 export interface ThinkingEvent {
@@ -28,6 +30,8 @@ export interface ToolStartEvent {
   type: 'tool_start';
   tool: string;
   args: Record<string, unknown>;
+  /** Batch ID for parallel execution correlation */
+  batchId?: string;
 }
 
 export interface ToolProgressEvent {
@@ -41,6 +45,10 @@ export interface ToolEndEvent {
   tool: string;
   result: unknown;
   durationMs: number;
+  /** Whether this result came from cache */
+  fromCache?: boolean;
+  /** Batch ID for parallel execution correlation */
+  batchId?: string;
 }
 
 export interface ToolErrorEvent {
@@ -100,6 +108,30 @@ export interface AnswerStartEvent {
   type: 'answer_start';
 }
 
+export interface AnswerChunkEvent {
+  type: 'answer_chunk';
+  /** Chunk of answer content */
+  content: string;
+  /** Whether this is the final chunk */
+  isFinal?: boolean;
+}
+
+export interface ExplainStepEvent {
+  type: 'explain_step';
+  /** Investigation phase */
+  phase: 'gather' | 'hypothesize' | 'test' | 'evaluate' | 'conclude';
+  /** Human-readable description of the step */
+  description: string;
+  /** Additional details about the step */
+  details?: {
+    hypothesisId?: string;
+    evidenceStrength?: EvidenceStrength;
+    reasoning?: string;
+    confidence?: number;
+    toolName?: string;
+  };
+}
+
 export interface DoneEvent {
   type: 'done';
   answer: string;
@@ -144,6 +176,12 @@ export interface Tool {
   description: string;
   parameters: ToolParameters;
   execute: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
 }
 
 export interface ToolParameters {

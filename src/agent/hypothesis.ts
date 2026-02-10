@@ -7,6 +7,20 @@
 
 import type { Hypothesis, EvidenceStrength, ConfidenceLevel } from './types';
 
+/**
+ * Tree node representation for UI rendering
+ */
+export interface TreeNode {
+  id: string;
+  statement: string;
+  status: 'active' | 'pruned' | 'confirmed';
+  evidenceStrength: EvidenceStrength;
+  confidence?: number;
+  reasoning?: string | null;
+  depth: number;
+  children: TreeNode[];
+}
+
 export interface InvestigationTree {
   incidentId: string;
   query: string;
@@ -168,8 +182,7 @@ export class HypothesisEngine {
    */
   isComplete(): boolean {
     return (
-      this.tree.confirmedRootCause !== null ||
-      this.getActiveHypotheses().length === 0 // All hypotheses tested
+      this.tree.confirmedRootCause !== null || this.getActiveHypotheses().length === 0 // All hypotheses tested
     );
   }
 
@@ -271,7 +284,13 @@ export class HypothesisEngine {
   private appendHypothesisMarkdown(h: Hypothesis, lines: string[], indent: number): void {
     const prefix = '  '.repeat(indent);
     const statusIcon =
-      h.status === 'confirmed' ? '✅' : h.status === 'pruned' ? '❌' : h.evidenceStrength === 'strong' ? '⚠️' : '○';
+      h.status === 'confirmed'
+        ? '✅'
+        : h.status === 'pruned'
+          ? '❌'
+          : h.evidenceStrength === 'strong'
+            ? '⚠️'
+            : '○';
 
     const evidenceLabel =
       h.evidenceStrength !== 'pending' ? ` [${h.evidenceStrength.toUpperCase()}]` : '';
@@ -292,6 +311,54 @@ export class HypothesisEngine {
    */
   toJSON(): string {
     return JSON.stringify(this.tree, null, 2);
+  }
+
+  /**
+   * Convert to tree data format for UI rendering
+   */
+  toTreeData(): TreeNode[] {
+    return this.tree.rootHypotheses.map((h) => this.hypothesisToTreeNode(h));
+  }
+
+  /**
+   * Convert a single hypothesis to tree node format
+   */
+  private hypothesisToTreeNode(hypothesis: Hypothesis): TreeNode {
+    return {
+      id: hypothesis.id,
+      statement: hypothesis.statement,
+      status: hypothesis.status,
+      evidenceStrength: hypothesis.evidenceStrength,
+      confidence: this.calculateHypothesisConfidence(hypothesis),
+      reasoning: hypothesis.reasoning,
+      depth: hypothesis.depth,
+      children: hypothesis.children.map((child) => this.hypothesisToTreeNode(child)),
+    };
+  }
+
+  /**
+   * Calculate confidence percentage for a hypothesis
+   */
+  private calculateHypothesisConfidence(hypothesis: Hypothesis): number {
+    if (hypothesis.status === 'confirmed') {
+      return 85;
+    }
+    if (hypothesis.status === 'pruned') {
+      return 0;
+    }
+    switch (hypothesis.evidenceStrength) {
+      case 'strong':
+        return 70;
+      case 'weak':
+        return 40;
+      case 'contradicting':
+        return 10;
+      case 'none':
+        return 20;
+      case 'pending':
+      default:
+        return 30;
+    }
   }
 
   /**

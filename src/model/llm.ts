@@ -14,10 +14,10 @@ import {
   type TSchema,
 } from '@mariozechner/pi-ai';
 import type { Tool } from '../agent/types';
-import type { LLMClient, LLMResponse, ToolCall } from '../agent/agent';
+import type { LLMClient, LLMResponse, ToolCall, StreamChunk } from '../agent/agent';
 
 // Re-export types for external use
-export type { LLMClient, LLMResponse, ToolCall };
+export type { LLMClient, LLMResponse, ToolCall, StreamChunk };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyModel = any;
@@ -139,6 +139,65 @@ class PiAIClient implements LLMClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(
         `LLM API error (${this.config.provider}/${this.config.model}): ${errorMessage}`
+      );
+    }
+  }
+
+  /**
+   * Streaming chat completion
+   *
+   * Yields chunks of the response as they arrive.
+   * Falls back to chunking the non-streaming response if streaming is not supported.
+   */
+  async *chatStream(
+    systemPrompt: string,
+    userPrompt: string,
+    tools?: Tool[]
+  ): AsyncGenerator<StreamChunk> {
+    // pi-ai may not support streaming for all providers
+    // Fall back to chunking the complete response
+    try {
+      const response = await this.chat(systemPrompt, userPrompt, tools);
+
+      // Yield thinking first if present
+      if (response.thinking) {
+        yield {
+          type: 'thinking',
+          content: response.thinking,
+        };
+      }
+
+      // Yield tool calls
+      for (const toolCall of response.toolCalls) {
+        yield {
+          type: 'tool_call',
+          toolCall,
+        };
+      }
+
+      // Simulate streaming by chunking the content
+      if (response.content) {
+        const chunkSize = 50; // characters per chunk
+        const content = response.content;
+        for (let i = 0; i < content.length; i += chunkSize) {
+          yield {
+            type: 'text',
+            content: content.slice(i, i + chunkSize),
+          };
+          // Small delay to simulate streaming
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+      }
+
+      // Final done event with complete response
+      yield {
+        type: 'done',
+        response,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `LLM streaming error (${this.config.provider}/${this.config.model}): ${errorMessage}`
       );
     }
   }

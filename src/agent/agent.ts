@@ -13,6 +13,7 @@ import type {
   AgentEvent,
   AgentConfig,
   Tool,
+  ToolCall,
   RetrievedKnowledge,
   InvestigationContext,
 } from './types';
@@ -35,6 +36,13 @@ import { KnowledgeContextManager } from './knowledge-context';
 import { ServiceContextManager } from './service-context';
 import { InfraContextManager, createInfraContextManager } from './infra-context';
 import { setActiveScratchpad } from '../tools/registry';
+import { LRUToolCache, createToolCache, type CacheConfig } from './tool-cache';
+import {
+  ParallelToolExecutor,
+  createParallelExecutor,
+  type ParallelExecutorConfig,
+} from './parallel-executor';
+import { CitationContext, createCitationContext } from './citation-context';
 
 const DEFAULT_CONFIG: AgentConfig = {
   maxIterations: 10,
@@ -137,11 +145,33 @@ export interface AgentDependencies {
   serviceGraph?: import('./service-context').ServiceContextManager extends ServiceContextManager
     ? ConstructorParameters<typeof ServiceContextManager>[0]
     : never;
+  /** Tool result caching configuration */
+  cache?: LRUToolCache | Partial<CacheConfig> | false;
+  /** Parallel tool execution configuration */
+  parallelExecution?: ParallelToolExecutor | Partial<ParallelExecutorConfig> | false;
+  /** Enable explain mode for detailed investigation steps */
+  explainMode?: boolean;
+}
+
+/**
+ * Streaming response chunk
+ */
+export interface StreamChunk {
+  type: 'text' | 'tool_call' | 'thinking' | 'done';
+  content?: string;
+  toolCall?: ToolCall;
+  response?: LLMResponse;
 }
 
 // Interfaces for dependencies (to be implemented)
 export interface LLMClient {
   chat(systemPrompt: string, userPrompt: string, tools?: Tool[]): Promise<LLMResponse>;
+  /** Optional streaming method */
+  chatStream?(
+    systemPrompt: string,
+    userPrompt: string,
+    tools?: Tool[]
+  ): AsyncGenerator<StreamChunk>;
 }
 
 export interface LLMResponse {
@@ -150,11 +180,8 @@ export interface LLMResponse {
   thinking?: string;
 }
 
-export interface ToolCall {
-  id: string;
-  name: string;
-  args: Record<string, unknown>;
-}
+// Re-export ToolCall from types for backward compatibility
+export type { ToolCall };
 
 export interface KnowledgeRetriever {
   retrieve(context: InvestigationContext): Promise<RetrievedKnowledge>;
@@ -184,6 +211,11 @@ export class Agent {
   private infraContextManager?: InfraContextManager;
   private knowledgeContextManager?: KnowledgeContextManager;
   private serviceContextManager?: ServiceContextManager;
+
+  // Speed and trust features
+  private readonly toolCache?: LRUToolCache;
+  private readonly parallelExecutor?: ParallelToolExecutor;
+  private readonly explainMode: boolean;
 
   constructor(deps: AgentDependencies) {
     this.config = { ...DEFAULT_CONFIG, ...deps.config };
@@ -218,6 +250,25 @@ export class Agent {
         defaultRegion: deps.promptConfig?.awsDefaultRegion,
       });
     }
+
+    // Initialize speed features
+    if (deps.cache !== false) {
+      if (deps.cache instanceof LRUToolCache) {
+        this.toolCache = deps.cache;
+      } else {
+        this.toolCache = createToolCache(deps.cache || {});
+      }
+    }
+
+    if (deps.parallelExecution !== false) {
+      if (deps.parallelExecution instanceof ParallelToolExecutor) {
+        this.parallelExecutor = deps.parallelExecution;
+      } else {
+        this.parallelExecutor = createParallelExecutor(deps.parallelExecution || {});
+      }
+    }
+
+    this.explainMode = deps.explainMode ?? false;
   }
 
   /**
@@ -254,6 +305,9 @@ export class Agent {
       ? new HypothesisEngine(incidentId, query, this.config.maxHypothesisDepth)
       : null;
 
+    // Initialize citation context for source tracking
+    const citationContext = createCitationContext({ maxCitations: 10, showScores: true });
+
     // Run infrastructure discovery if enabled
     if (this.infraContextManager && this.contextEngineering.enableInfraDiscovery) {
       try {
@@ -278,6 +332,12 @@ export class Agent {
         },
       };
       knowledge = await this.knowledgeRetriever.retrieve(context);
+
+      // Add knowledge to citation context
+      citationContext.addAll(knowledge.runbooks);
+      citationContext.addAll(knowledge.postmortems);
+      citationContext.addAll(knowledge.knownIssues);
+      citationContext.addAll(knowledge.architecture);
 
       if (knowledge.runbooks.length > 0 || knowledge.postmortems.length > 0) {
         yield {
@@ -448,8 +508,23 @@ export class Agent {
         break;
       }
 
-      // Execute tool calls
+      // Execute tool calls with caching and parallel execution
       let executedAnyTool = false;
+
+      // Emit explain event for tool execution phase
+      if (this.explainMode) {
+        yield {
+          type: 'explain_step',
+          phase: 'gather',
+          description: `Executing ${response.toolCalls.length} tool call(s) to gather evidence`,
+          details: {
+            toolName: response.toolCalls.map((tc) => tc.name).join(', '),
+          },
+        };
+      }
+
+      // Validate and filter tool calls
+      const validToolCalls: Array<{ call: ToolCall; tool: Tool }> = [];
       for (const toolCall of response.toolCalls) {
         const callSignature = `${toolCall.name}:${stableSerialize(toolCall.args)}`;
         const signatureCount = (repeatedToolCallCount.get(callSignature) || 0) + 1;
@@ -495,74 +570,219 @@ export class Agent {
           };
         }
 
-        // Execute tool
+        validToolCalls.push({ call: toolCall, tool });
+      }
+
+      // Process each tool call - check cache first, then execute
+      const executionResults: Array<{
+        toolCall: ToolCall;
+        result: unknown;
+        durationMs: number;
+        fromCache: boolean;
+        error?: string;
+      }> = [];
+
+      // Separate cached and uncached tool calls
+      const cachedResults: typeof executionResults = [];
+      const toolsToExecute: typeof validToolCalls = [];
+
+      for (const { call, tool } of validToolCalls) {
+        // Check cache first
+        if (this.toolCache) {
+          const cachedResult = this.toolCache.get(call.name, call.args);
+          if (cachedResult !== null) {
+            cachedResults.push({
+              toolCall: call,
+              result: cachedResult,
+              durationMs: 0,
+              fromCache: true,
+            });
+            continue;
+          }
+        }
+        toolsToExecute.push({ call, tool });
+      }
+
+      // Emit events for cached results
+      for (const cached of cachedResults) {
         yield {
           type: 'tool_start',
-          tool: toolCall.name,
-          args: toolCall.args,
+          tool: cached.toolCall.name,
+          args: cached.toolCall.args,
+        };
+        yield {
+          type: 'tool_end',
+          tool: cached.toolCall.name,
+          result: cached.result,
+          durationMs: cached.durationMs,
+          fromCache: true,
         };
         executedAnyTool = true;
+        executionResults.push(cached);
+      }
 
-        const startTime = Date.now();
-        try {
-          const result = await tool.execute(toolCall.args);
-          const durationMs = Date.now() - startTime;
+      // Execute remaining tools (parallel or sequential)
+      if (toolsToExecute.length > 0) {
+        if (this.parallelExecutor && toolsToExecute.length > 1) {
+          // Parallel execution
+          const batchId = `batch_${Date.now()}`;
 
-          yield {
-            type: 'tool_end',
-            tool: toolCall.name,
-            result,
-            durationMs,
-          };
-
-          // Generate compact summary if summarization is enabled
-          let compact;
-          if (this.toolSummarizer && this.contextEngineering.enableSummarization) {
-            compact = this.toolSummarizer.summarize(toolCall.name, toolCall.args, result);
+          // Emit start events for all tools
+          for (const { call } of toolsToExecute) {
+            yield {
+              type: 'tool_start',
+              tool: call.name,
+              args: call.args,
+              batchId,
+            };
           }
 
-          // Append with tiered storage support
-          const resultId = await scratchpad.appendToolResult(
-            {
-              tool: toolCall.name,
-              args: toolCall.args,
-              result,
-              durationMs,
-            },
-            { compact }
+          const parallelResults = await this.parallelExecutor.executeAll(
+            toolsToExecute,
+            (execResult) => {
+              // Results are collected after Promise.all completes
+            }
           );
 
-          // Update investigation memory with discovered services
-          if (investigationMemory && compact?.services) {
-            investigationMemory.addDiscoveredServices(compact.services);
+          for (const execResult of parallelResults) {
+            if (execResult.error) {
+              yield {
+                type: 'tool_error',
+                tool: execResult.toolCall.name,
+                error: execResult.error,
+              };
+              executionResults.push({
+                toolCall: execResult.toolCall,
+                result: null,
+                durationMs: execResult.durationMs,
+                fromCache: false,
+                error: execResult.error,
+              });
+            } else {
+              yield {
+                type: 'tool_end',
+                tool: execResult.toolCall.name,
+                result: execResult.result,
+                durationMs: execResult.durationMs,
+                fromCache: false,
+                batchId: execResult.batchId,
+              };
+              executionResults.push({
+                toolCall: execResult.toolCall,
+                result: execResult.result,
+                durationMs: execResult.durationMs,
+                fromCache: false,
+              });
+
+              // Store in cache
+              if (this.toolCache && execResult.result !== undefined) {
+                this.toolCache.set(
+                  execResult.toolCall.name,
+                  execResult.toolCall.args,
+                  execResult.result
+                );
+              }
+            }
+            executedAnyTool = true;
           }
+        } else {
+          // Sequential execution
+          for (const { call, tool } of toolsToExecute) {
+            yield {
+              type: 'tool_start',
+              tool: call.name,
+              args: call.args,
+            };
+            executedAnyTool = true;
 
-          // Check for new services/symptoms to trigger knowledge re-query
-          if (investigationMemory && this.knowledgeContextManager) {
-            const state = investigationMemory.getState();
-            const newServices = state.servicesDiscovered.filter(
-              (s) => !previousServices.includes(s)
-            );
-            const newSymptoms = state.symptomsIdentified.filter(
-              (s) => !previousSymptoms.includes(s)
-            );
+            const startTime = Date.now();
+            try {
+              const result = await tool.execute(call.args);
+              const durationMs = Date.now() - startTime;
 
-            if (newServices.length > 0 || newSymptoms.length > 0) {
-              await this.knowledgeContextManager.updateFromInvestigationState(
-                state,
-                previousServices,
-                previousSymptoms
-              );
-              previousServices = [...state.servicesDiscovered];
-              previousSymptoms = [...state.symptomsIdentified];
+              yield {
+                type: 'tool_end',
+                tool: call.name,
+                result,
+                durationMs,
+                fromCache: false,
+              };
+
+              executionResults.push({
+                toolCall: call,
+                result,
+                durationMs,
+                fromCache: false,
+              });
+
+              // Store in cache
+              if (this.toolCache) {
+                this.toolCache.set(call.name, call.args, result);
+              }
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              yield {
+                type: 'tool_error',
+                tool: call.name,
+                error: errorMsg,
+              };
+              executionResults.push({
+                toolCall: call,
+                result: null,
+                durationMs: Date.now() - startTime,
+                fromCache: false,
+                error: errorMsg,
+              });
             }
           }
-        } catch (error) {
-          yield {
-            type: 'tool_error',
-            tool: toolCall.name,
-            error: error instanceof Error ? error.message : String(error),
-          };
+        }
+      }
+
+      // Process results: summarize and store
+      for (const toolResult of executionResults) {
+        if (toolResult.error) continue;
+
+        // Generate compact summary if summarization is enabled
+        let compact;
+        if (this.toolSummarizer && this.contextEngineering.enableSummarization) {
+          compact = this.toolSummarizer.summarize(
+            toolResult.toolCall.name,
+            toolResult.toolCall.args,
+            toolResult.result
+          );
+        }
+
+        // Append with tiered storage support
+        await scratchpad.appendToolResult(
+          {
+            tool: toolResult.toolCall.name,
+            args: toolResult.toolCall.args,
+            result: toolResult.result,
+            durationMs: toolResult.durationMs,
+          },
+          { compact }
+        );
+
+        // Update investigation memory with discovered services
+        if (investigationMemory && compact?.services) {
+          investigationMemory.addDiscoveredServices(compact.services);
+        }
+
+        // Check for new services/symptoms to trigger knowledge re-query
+        if (investigationMemory && this.knowledgeContextManager) {
+          const state = investigationMemory.getState();
+          const newServices = state.servicesDiscovered.filter((s) => !previousServices.includes(s));
+          const newSymptoms = state.symptomsIdentified.filter((s) => !previousSymptoms.includes(s));
+
+          if (newServices.length > 0 || newSymptoms.length > 0) {
+            await this.knowledgeContextManager.updateFromInvestigationState(
+              state,
+              previousServices,
+              previousSymptoms
+            );
+            previousServices = [...state.servicesDiscovered];
+            previousSymptoms = [...state.symptomsIdentified];
+          }
         }
       }
 
@@ -578,6 +798,15 @@ export class Agent {
 
     // Generate final answer
     yield { type: 'answer_start' };
+
+    // Emit explain event for conclusion phase
+    if (this.explainMode) {
+      yield {
+        type: 'explain_step',
+        phase: 'conclude',
+        description: 'Synthesizing findings into final answer',
+      };
+    }
 
     // Use tiered context for final answer if available
     let allToolResults: string;
@@ -602,9 +831,17 @@ export class Agent {
       answer += '\n\n---\n\n## Investigation Summary\n\n' + investigationMemory.buildFinalSummary();
     }
 
-    const citationSection = buildRunbookCitationSection(knowledge);
-    if (citationSection && !answer.includes('## Runbook References')) {
-      answer += citationSection;
+    // Add citations from citation context (preferred) or fall back to old method
+    if (citationContext.hasCitations) {
+      const citationMarkdown = citationContext.formatMarkdown();
+      if (citationMarkdown && !answer.includes('## Sources')) {
+        answer += '\n\n---\n\n' + citationMarkdown;
+      }
+    } else {
+      const citationSection = buildRunbookCitationSection(knowledge);
+      if (citationSection && !answer.includes('## Runbook References')) {
+        answer += citationSection;
+      }
     }
 
     yield {
@@ -649,5 +886,33 @@ export class Agent {
    */
   getSafetyManager(): SafetyManager {
     return this.safety;
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): {
+    hits: number;
+    misses: number;
+    hitRate: number;
+    size: number;
+    evictions: number;
+  } | null {
+    return this.toolCache?.getStats() ?? null;
+  }
+
+  /**
+   * Invalidate tool cache
+   * @param toolName Optional - if provided, only invalidate entries for this tool
+   */
+  invalidateCache(toolName?: string): void {
+    this.toolCache?.invalidate(toolName);
+  }
+
+  /**
+   * Check if explain mode is enabled
+   */
+  isExplainModeEnabled(): boolean {
+    return this.explainMode;
   }
 }
