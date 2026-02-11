@@ -119,7 +119,30 @@
 
         <!-- Installation -->
         <h2 id="installation">Installation</h2>
-        <p>RunbookAI requires <strong>Node.js 20+</strong> or <strong>Bun</strong>. We recommend using Bun for faster installation and runtime performance.</p>
+        <p>Install RunbookAI with a single command:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>curl -fsSL https://userunbook.ai/install.sh | bash</code></pre>
+        </div>
+
+        <p>After installation, restart your shell:</p>
+
+        <div class="config-block">
+          <div class="config-header">Terminal</div>
+          <pre><code>exec $SHELL -l</code></pre>
+        </div>
+
+        <div class="info-box info-box-tip">
+          <div class="info-box-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            What the install script does
+          </div>
+          <p>The script installs Bun (if needed), clones the repo to <code>~/.runbook</code>, builds the CLI, and adds it to your PATH.</p>
+        </div>
+
+        <h3>Manual Installation</h3>
+        <p>Alternatively, you can install manually:</p>
 
         <div class="config-block">
           <div class="config-header">Terminal</div>
@@ -130,16 +153,16 @@ cd RunbookAI
 # Install dependencies with Bun (recommended)
 bun install
 
-# Or with npm
-npm install</code></pre>
+# Build the CLI
+bun run build</code></pre>
         </div>
 
         <h3>Requirements</h3>
         <ul>
-          <li><strong>Node.js 20+</strong> or <strong>Bun 1.0+</strong></li>
+          <li><strong>Bun 1.0+</strong> or <strong>Node.js 20+</strong></li>
           <li><strong>Anthropic API Key</strong> for Claude LLM</li>
-          <li><strong>AWS credentials</strong> (for AWS integration)</li>
-          <li><strong>kubectl</strong> configured (for Kubernetes integration)</li>
+          <li><strong>AWS credentials</strong> (optional, for AWS integration)</li>
+          <li><strong>kubectl</strong> configured (optional, for Kubernetes integration)</li>
         </ul>
 
         <!-- Configuration -->
