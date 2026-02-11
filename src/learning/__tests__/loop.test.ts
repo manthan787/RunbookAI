@@ -116,6 +116,7 @@ services:
     const proposalContent = await readFile(output.proposedRunbookUpdates[0], 'utf-8');
     expect(proposalContent).toContain('Runbook Update Proposal');
     expect(proposalContent).toContain('Checkout API Recovery');
+    expect(proposalContent).toContain('Suggested Target: Checkout API Recovery');
   });
 
   it('applies update suggestions directly to local runbooks in apply mode', async () => {
@@ -201,7 +202,8 @@ services:
               title: 'Checkout DB Pool Exhaustion Mitigation',
               services: ['checkout-api', 'postgres'],
               reasoning: 'No dedicated runbook exists for this failure mode.',
-              contentMarkdown: '# Checkout DB Pool Exhaustion\n\n## Mitigation\n- Scale read replicas.',
+              contentMarkdown:
+                '# Checkout DB Pool Exhaustion\n\n## Mitigation\n- Scale read replicas.',
               confidence: 0.88,
             },
           ],

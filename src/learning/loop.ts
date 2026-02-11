@@ -556,6 +556,7 @@ async function applySuggestion(
       '# Runbook Update Proposal',
       '',
       `- Incident: ${context.incidentLabel}`,
+      `- Suggested Target: ${targetTitle}`,
       `- Suggested Target Title: ${targetTitle}`,
       `- Suggested Target Path: ${targetPath}`,
       `- Confidence: ${suggestion.confidence}`,
