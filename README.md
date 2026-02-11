@@ -14,27 +14,20 @@
 
 </div>
 
-An AI-powered SRE assistant that investigates incidents, executes runbooks, and manages cloud infrastructure using a research-first, hypothesis-driven methodology.
+RunbookAI helps on-call engineers go from alert to likely root cause faster with hypothesis-driven investigation, runbook-aware context, and approval-gated remediation.
 
-## Features
+Built for SRE and platform teams operating AWS and Kubernetes who need speed without losing auditability.
 
-- **Hypothesis-Driven Investigation**: Forms and tests hypotheses about incidents, branches on strong evidence, prunes dead ends
-- **Research-First Operations**: Always gathers context before suggesting changes
-- **Knowledge Integration**: Indexes and retrieves organizational runbooks, post-mortems, and architecture docs
-- **Claude Code Integration**: Hooks into Claude Code sessions to inject relevant context, block dangerous commands, and track investigations
-- **MCP Server**: Exposes knowledge base as tools Claude Code can query on-demand
-- **Investigation Checkpoints**: Save and resume investigation state across AI sessions
-- **Dynamic Skill Execution**: Built-in and user-defined skills are loaded at runtime and executed step-by-step with approval hooks
-- **Kubernetes Query Surface**: First-class read-only Kubernetes operations for cluster status, workloads, and events
-- **Incident Provider Parity**: PagerDuty and OpsGenie are both supported in core config validation
-- **Full Audit Trail**: Every tool call, hypothesis, and decision is logged
-- **Safety First**: Mutations require approval with rollback commands
+## Start in 60 Seconds
 
-## Installation
+### Prerequisites
+- Node.js 20+
+- Bun
+- Anthropic API key (`ANTHROPIC_API_KEY`)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/runbook.git
+git clone https://github.com/Runbook-Agent/RunbookAI.git runbook
 cd runbook
 
 # Install dependencies
@@ -43,39 +36,47 @@ bun install
 # Set up configuration with the wizard
 runbook init
 
-# Example output (abridged):
-# ═══════════════════════════════════════════
-#  Runbook Setup Wizard
-# ═══════════════════════════════════════════
-# Step 1: Choose your AI provider
-# Step 2: Enter your API key
-# ...
-#  Setup Complete!
-# Configuration complete! Your settings have been saved to .runbook/services.yaml
+# Set your API key
+export ANTHROPIC_API_KEY=your-api-key
+# Run your first investigation
+bun run dev investigate PD-12345
 ```
 
 If you're running directly from source without a globally installed `runbook` binary, use `bun run dev <command>` as an equivalent.
 
-## Quick Start
+Expected output shape:
+- Root-cause hypothesis with confidence
+- Evidence log of the checks performed
+- Remediation suggestions, gated behind approval where needed
 
-```bash
-# Ask about your infrastructure
-runbook ask "What EC2 instances are running in prod?"
-
-# Ask about Kubernetes state
-runbook ask "Show cluster status, top nodes, and any warning events"
-
-# Investigate an incident
-runbook investigate PD-12345
-
-# Investigate + execute remediation steps via skills
-runbook investigate PD-12345 --auto-remediate
-
-# Get a status overview
-runbook status
+```text
+Investigation: PD-12345
+Hypothesis: checkout-api latency spike caused by Redis connection exhaustion (confidence: 0.86)
+Evidence: CloudWatch errors, Redis saturation, pod restart timeline
+Next step: apply runbook "Redis Connection Exhaustion" (approval required)
 ```
 
+## Why Teams Adopt RunbookAI
+- Faster triage: Research-first and hypothesis-driven workflows reduce alert-to-understanding time.
+- Safer execution: Mutating actions require approval and can include rollback guidance.
+- Operational memory: Knowledge retrieval uses your runbooks, postmortems, and architecture notes.
+
+## Why Teams Trust It
+- Full audit trail of queries, hypotheses, and decisions.
+- Approval gates for sensitive actions.
+- Kubernetes access is read-only by default and can be explicitly enabled.
+
+## Core Capabilities
+- Hypothesis-driven incident investigation with branch/prune logic.
+- Runtime skill execution with approval-aware workflow steps.
+- Dynamic skill and knowledge wiring at runtime.
+- Incident integrations for PagerDuty and OpsGenie.
+- Claude Code integration with context injection and safety hooks.
+- MCP server exposing searchable operational knowledge.
+
 ## Commands
+
+Commands below use the installed `runbook` binary. During local development, use `bun run dev <command>`.
 
 ### `runbook ask <query>`
 
@@ -322,13 +323,13 @@ Use the built-in simulation utilities to stage deterministic chat + investigate 
 
 ```bash
 # Create simulation runbooks and sync knowledge
-npm run simulate:setup
+bun run simulate:setup
 
 # Optional: provision failing AWS resources + trigger PagerDuty incident
-npm run simulate:setup -- --with-aws --create-pd-incident
+bun run simulate:setup -- --with-aws --create-pd-incident
 
 # Cleanup simulation infra/resources
-npm run simulate:cleanup
+bun run simulate:cleanup
 ```
 
 Detailed guide: [docs/SIMULATE_INCIDENTS.md](./docs/SIMULATE_INCIDENTS.md)
@@ -338,7 +339,7 @@ Detailed guide: [docs/SIMULATE_INCIDENTS.md](./docs/SIMULATE_INCIDENTS.md)
 Run real-loop investigation benchmarks against fixture datasets:
 
 ```bash
-npm run eval:investigate -- \
+bun run eval:investigate -- \
   --fixtures examples/evals/rcaeval-fixtures.generated.json \
   --out .runbook/evals/rcaeval-report.json
 ```
@@ -346,7 +347,7 @@ npm run eval:investigate -- \
 Run all benchmark adapters in one command (RCAEval + Rootly + TraceRCA):
 
 ```bash
-npm run eval:all -- \
+bun run eval:all -- \
   --out-dir .runbook/evals/all-benchmarks \
   --rcaeval-input examples/evals/rcaeval-input.sample.json \
   --tracerca-input examples/evals/tracerca-input.sample.json
@@ -359,7 +360,7 @@ with available local inputs and fallback fixtures when network/downloads are una
 To run without bootstrap:
 
 ```bash
-npm run eval:all -- --no-setup
+bun run eval:all -- --no-setup
 ```
 
 This generates per-benchmark reports plus an aggregate summary:
@@ -369,30 +370,6 @@ This generates per-benchmark reports plus an aggregate summary:
 - `.runbook/evals/all-benchmarks/summary.json`
 
 See [docs/INVESTIGATION_EVAL.md](./docs/INVESTIGATION_EVAL.md) for dataset setup and converter workflows.
-
-## Recent Changes
-
-- **Claude Code Integration**: Deep integration with Claude Code for AI-assisted incident investigation
-  - Context injection via hooks: Automatically injects relevant runbooks and known issues based on detected services and symptoms
-  - MCP Server: Exposes knowledge base as tools (`search_runbooks`, `get_known_issues`, `search_postmortems`, etc.)
-  - Investigation checkpoints: Save and resume investigation state across sessions
-  - Safety guardrails: Blocks dangerous commands (kubectl delete, rm -rf, etc.)
-  - See [docs/CLAUDE_INTEGRATION.md](./docs/CLAUDE_INTEGRATION.md) for full documentation
-- **Knowledge Sources**: Added Confluence and Google Drive integrations for syncing runbooks and architecture docs
-  - Confluence: REST API v2 with label filtering, HTML→markdown conversion
-  - Google Drive: OAuth2 flow, Google Docs/Sheets export, incremental sync
-  - New command: `runbook knowledge auth google` for OAuth setup
-- Investigation eval harness now supports RCAEval, Rootly logs, and TraceRCA conversion with a unified multi-benchmark runner (`npm run eval:all`) and per-benchmark JSON reports.
-- Incident simulation docs/scripts were renamed from YC-specific naming to generic utilities:
-  - `docs/SIMULATE_INCIDENTS.md`
-  - `npm run simulate:setup`
-  - `npm run simulate:cleanup`
-- Skill execution now runs real workflows via `SkillExecutor` through the `skill` tool.
-- CLI runtime now loads dynamic skills from registry and injects knowledge retrieval into agent runtime.
-- Main config schema now includes OpsGenie under `incident.opsgenie` with validation.
-- Added `kubernetes_query` tool with read-only actions:
-  - `status`, `contexts`, `namespaces`, `pods`, `deployments`, `nodes`, `events`, `top_pods`, `top_nodes`
-- Detailed implementation log: [CODEX_PLAN.md](./CODEX_PLAN.md)
 
 ## Adding Runbooks
 
@@ -457,6 +434,14 @@ bun run lint
 # Format
 bun run format
 ```
+
+## What's New
+- Dynamic runtime skills now execute workflow steps with approval hooks.
+- Kubernetes tooling is available as a read-only query surface and can be gated with `providers.kubernetes.enabled`.
+- Investigation evaluation now supports RCAEval, Rootly, and TraceRCA via a unified runner (`bun run eval:all`).
+- Incident simulation tooling uses generic scripts: `bun run simulate:setup` and `bun run simulate:cleanup`.
+- Claude Code integration includes context hooks, checkpoints, and MCP knowledge tools.
+- Full implementation details: [docs/CHANGES_2026-02-08.md](./docs/CHANGES_2026-02-08.md) and [CODEX_PLAN.md](./CODEX_PLAN.md)
 
 ## License
 
