@@ -146,6 +146,25 @@ runbook slack-gateway --mode http --port 3001
 
 See setup details in [docs/SLACK_GATEWAY.md](./docs/SLACK_GATEWAY.md).
 
+### `runbook integrations claude enable`
+
+Install Claude Code hooks into `.claude/settings.json` so active Claude sessions stream hook events into Runbook artifacts.
+
+```bash
+# Project-scoped install (recommended)
+runbook integrations claude enable
+
+# Optional: include Notification events too
+runbook integrations claude enable --include-notifications
+
+# Check installation
+runbook integrations claude status
+```
+
+Hook events are persisted under:
+- `.runbook/hooks/claude/latest.json`
+- `.runbook/hooks/claude/sessions/<session-id>/events.ndjson`
+
 ## Configuration
 
 Create `.runbook/config.yaml`:

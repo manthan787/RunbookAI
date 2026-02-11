@@ -31,6 +31,12 @@ import {
   type RemediationContext,
 } from './agent/investigation-orchestrator';
 import type { RemediationStep } from './agent/state-machine';
+import {
+  getClaudeHookStatus,
+  handleClaudeHookStdin,
+  installClaudeHooks,
+  uninstallClaudeHooks,
+} from './integrations/claude-hooks';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -808,15 +814,10 @@ async function runStructuredInvestigation(
         }
         break;
       case 'conclusion_reached':
-        recordLearningEvent(
-          'conclusion_reached',
-          event.conclusion.rootCause,
-          'conclude',
-          {
-            confidence: event.conclusion.confidence,
-            affectedServices: event.conclusion.affectedServices || [],
-          }
-        );
+        recordLearningEvent('conclusion_reached', event.conclusion.rootCause, 'conclude', {
+          confidence: event.conclusion.confidence,
+          affectedServices: event.conclusion.affectedServices || [],
+        });
         console.log(chalk.green(`  Candidate root cause: ${event.conclusion.rootCause}`));
         console.log(chalk.gray(`  Confidence: ${event.conclusion.confidence}`));
         if (event.conclusion.affectedServices && event.conclusion.affectedServices.length > 0) {
@@ -966,9 +967,7 @@ async function runStructuredInvestigation(
       }
     } catch (error) {
       console.log(
-        chalk.red(
-          `Learning loop failed: ${error instanceof Error ? error.message : String(error)}`
-        )
+        chalk.red(`Learning loop failed: ${error instanceof Error ? error.message : String(error)}`)
       );
     }
   }
@@ -1530,6 +1529,166 @@ program
       const config = await loadConfig();
       console.log(chalk.cyan('Current Configuration:'));
       console.log(JSON.stringify(config, null, 2));
+    }
+  });
+
+// Integrations command group
+const integrations = program
+  .command('integrations')
+  .description('Manage external agent integrations');
+const claudeIntegration = integrations
+  .command('claude')
+  .description('Manage Claude Code hook integration');
+
+claudeIntegration
+  .command('enable')
+  .description('Install Claude Code hooks that capture session events into Runbook artifacts')
+  .option('--scope <scope>', 'Settings scope: project or user', 'project')
+  .option(
+    '--runbook-command <command>',
+    'Command that Claude should execute for hook callbacks',
+    'runbook'
+  )
+  .option('--include-notifications', 'Capture Claude Notification hook events')
+  .action(
+    async (options: { scope: string; runbookCommand: string; includeNotifications?: boolean }) => {
+      const scope =
+        options.scope === 'user' ? 'user' : options.scope === 'project' ? 'project' : '';
+      if (!scope) {
+        console.error(chalk.red('Invalid --scope value. Use "project" or "user".'));
+        process.exit(1);
+      }
+
+      try {
+        const result = await installClaudeHooks({
+          scope,
+          runbookCommand: options.runbookCommand,
+          includeNotifications: options.includeNotifications || false,
+          cwd: process.cwd(),
+        });
+
+        if (result.addedHooks === 0) {
+          console.log(chalk.green('Claude hooks are already installed.'));
+        } else {
+          console.log(chalk.green(`Installed ${result.addedHooks} Claude hook entries.`));
+        }
+
+        console.log(chalk.gray(`Settings: ${result.settingsPath}`));
+        console.log(chalk.gray(`Hook command: ${result.hookCommand}`));
+        if (result.eventsUpdated.length > 0) {
+          console.log(chalk.gray(`Updated events: ${result.eventsUpdated.join(', ')}`));
+        }
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `Failed to install Claude hooks: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
+        process.exit(1);
+      }
+    }
+  );
+
+claudeIntegration
+  .command('status')
+  .description('Show Claude hook integration status')
+  .option('--scope <scope>', 'Settings scope: project or user', 'project')
+  .option(
+    '--runbook-command <command>',
+    'Command used when checking for installed Runbook hooks',
+    'runbook'
+  )
+  .action(async (options: { scope: string; runbookCommand: string }) => {
+    const scope = options.scope === 'user' ? 'user' : options.scope === 'project' ? 'project' : '';
+    if (!scope) {
+      console.error(chalk.red('Invalid --scope value. Use "project" or "user".'));
+      process.exit(1);
+    }
+
+    try {
+      const status = await getClaudeHookStatus({
+        scope,
+        runbookCommand: options.runbookCommand,
+        cwd: process.cwd(),
+      });
+
+      if (!status.exists) {
+        console.log(chalk.yellow(`No Claude settings file found at ${status.settingsPath}`));
+        return;
+      }
+
+      console.log(chalk.cyan(`Settings: ${status.settingsPath}`));
+      if (!status.installed) {
+        console.log(chalk.yellow('Runbook Claude hooks are not installed.'));
+        return;
+      }
+
+      console.log(chalk.green(`Runbook Claude hooks installed: ${status.installedHooks}`));
+      for (const [event, count] of Object.entries(status.eventCounts)) {
+        console.log(chalk.gray(`  ${event}: ${count}`));
+      }
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `Failed to check Claude hook status: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+      process.exit(1);
+    }
+  });
+
+claudeIntegration
+  .command('disable')
+  .description('Remove Runbook Claude hook entries from Claude settings')
+  .option('--scope <scope>', 'Settings scope: project or user', 'project')
+  .option(
+    '--runbook-command <command>',
+    'Command used when removing installed Runbook hooks',
+    'runbook'
+  )
+  .action(async (options: { scope: string; runbookCommand: string }) => {
+    const scope = options.scope === 'user' ? 'user' : options.scope === 'project' ? 'project' : '';
+    if (!scope) {
+      console.error(chalk.red('Invalid --scope value. Use "project" or "user".'));
+      process.exit(1);
+    }
+
+    try {
+      const result = await uninstallClaudeHooks({
+        scope,
+        runbookCommand: options.runbookCommand,
+        cwd: process.cwd(),
+      });
+
+      if (result.removedHooks === 0) {
+        console.log(chalk.yellow('No Runbook Claude hooks found to remove.'));
+      } else {
+        console.log(chalk.green(`Removed ${result.removedHooks} Runbook Claude hook entries.`));
+        console.log(chalk.gray(`Updated events: ${result.eventsUpdated.join(', ')}`));
+      }
+      console.log(chalk.gray(`Settings: ${result.settingsPath}`));
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `Failed to disable Claude hooks: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+      process.exit(1);
+    }
+  });
+
+claudeIntegration
+  .command('hook', { hidden: true })
+  .description('Internal Claude hook entrypoint')
+  .option('--project-dir <dir>', 'Override project directory for storing hook artifacts')
+  .action(async (options: { projectDir?: string }) => {
+    const result = await handleClaudeHookStdin({
+      projectDir: options.projectDir,
+    });
+
+    if (!result.handled && result.reason !== 'empty_stdin') {
+      const message = result.error ? `${result.reason}: ${result.error}` : result.reason;
+      console.error(chalk.yellow(`[runbook] Claude hook callback ignored (${message})`));
     }
   });
 
