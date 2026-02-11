@@ -21,6 +21,9 @@ An AI-powered SRE assistant that investigates incidents, executes runbooks, and 
 - **Hypothesis-Driven Investigation**: Forms and tests hypotheses about incidents, branches on strong evidence, prunes dead ends
 - **Research-First Operations**: Always gathers context before suggesting changes
 - **Knowledge Integration**: Indexes and retrieves organizational runbooks, post-mortems, and architecture docs
+- **Claude Code Integration**: Hooks into Claude Code sessions to inject relevant context, block dangerous commands, and track investigations
+- **MCP Server**: Exposes knowledge base as tools Claude Code can query on-demand
+- **Investigation Checkpoints**: Save and resume investigation state across AI sessions
 - **Dynamic Skill Execution**: Built-in and user-defined skills are loaded at runtime and executed step-by-step with approval hooks
 - **Kubernetes Query Surface**: First-class read-only Kubernetes operations for cluster status, workloads, and events
 - **Incident Provider Parity**: PagerDuty and OpsGenie are both supported in core config validation
@@ -146,24 +149,57 @@ runbook slack-gateway --mode http --port 3001
 
 See setup details in [docs/SLACK_GATEWAY.md](./docs/SLACK_GATEWAY.md).
 
-### `runbook integrations claude enable`
+### Claude Code Integration
 
-Install Claude Code hooks into `.claude/settings.json` so active Claude sessions stream hook events into Runbook artifacts.
+RunbookAI integrates deeply with [Claude Code](https://claude.ai/claude-code) to provide contextual knowledge during your AI-assisted debugging sessions.
+
+#### `runbook integrations claude enable`
+
+Install Claude Code hooks for automatic context injection:
 
 ```bash
 # Project-scoped install (recommended)
 runbook integrations claude enable
 
-# Optional: include Notification events too
-runbook integrations claude enable --include-notifications
-
 # Check installation
 runbook integrations claude status
 ```
 
-Hook events are persisted under:
-- `.runbook/hooks/claude/latest.json`
-- `.runbook/hooks/claude/sessions/<session-id>/events.ndjson`
+When enabled, RunbookAI automatically:
+- **Injects relevant context**: Detects services and symptoms in your prompts and provides matching runbooks and known issues
+- **Blocks dangerous commands**: Prevents accidental destructive operations (kubectl delete, rm -rf, etc.)
+- **Tracks session state**: Maintains investigation context across prompts
+
+#### `runbook mcp serve`
+
+Start an MCP server exposing RunbookAI knowledge as tools Claude Code can query:
+
+```bash
+# Start MCP server
+runbook mcp serve
+
+# List available tools
+runbook mcp tools
+```
+
+Available tools: `search_runbooks`, `get_known_issues`, `search_postmortems`, `get_knowledge_stats`, `list_services`
+
+#### `runbook checkpoint` Commands
+
+Save and resume investigation state across sessions:
+
+```bash
+# List checkpoints
+runbook checkpoint list --investigation inv-12345
+
+# Show checkpoint details
+runbook checkpoint show --id abc123def456
+
+# Delete a checkpoint
+runbook checkpoint delete --id abc123def456
+```
+
+See [docs/CLAUDE_INTEGRATION.md](./docs/CLAUDE_INTEGRATION.md) for full documentation.
 
 Generate learning artifacts directly from a stored Claude session:
 
@@ -307,6 +343,12 @@ See [docs/INVESTIGATION_EVAL.md](./docs/INVESTIGATION_EVAL.md) for dataset setup
 
 ## Recent Changes
 
+- **Claude Code Integration**: Deep integration with Claude Code for AI-assisted incident investigation
+  - Context injection via hooks: Automatically injects relevant runbooks and known issues based on detected services and symptoms
+  - MCP Server: Exposes knowledge base as tools (`search_runbooks`, `get_known_issues`, `search_postmortems`, etc.)
+  - Investigation checkpoints: Save and resume investigation state across sessions
+  - Safety guardrails: Blocks dangerous commands (kubectl delete, rm -rf, etc.)
+  - See [docs/CLAUDE_INTEGRATION.md](./docs/CLAUDE_INTEGRATION.md) for full documentation
 - **Knowledge Sources**: Added Confluence and Google Drive integrations for syncing runbooks and architecture docs
   - Confluence: REST API v2 with label filtering, HTML→markdown conversion
   - Google Drive: OAuth2 flow, Google Docs/Sheets export, incremental sync

@@ -39,6 +39,9 @@ import {
 } from './integrations/claude-hooks';
 import { createClaudeSessionStorageFromConfig } from './integrations/claude-session-store';
 import { runLearningLoopFromClaudeSession } from './learning/claude-session-ingestion';
+import { handleHookStdinWithResponse } from './integrations/hook-handlers';
+import { createMCPServer, runStdioServer } from './mcp';
+import { createCheckpointStore, formatCheckpoint, formatCheckpointList } from './session';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -1758,9 +1761,24 @@ claudeIntegration
 
 claudeIntegration
   .command('hook', { hidden: true })
-  .description('Internal Claude hook entrypoint')
+  .description('Internal Claude hook entrypoint with context injection')
   .option('--project-dir <dir>', 'Override project directory for storing hook artifacts')
-  .action(async (options: { projectDir?: string }) => {
+  .option('--no-context', 'Disable context injection (just persist events)')
+  .action(async (options: { projectDir?: string; context?: boolean }) => {
+    // Read stdin for context injection
+    const chunks: Buffer[] = [];
+    if (!process.stdin.isTTY) {
+      for await (const chunk of process.stdin) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+      }
+    }
+    const input = Buffer.concat(chunks).toString('utf-8');
+
+    if (input.trim().length === 0) {
+      return;
+    }
+
+    // Set up storage backend
     let storage: ReturnType<typeof createClaudeSessionStorageFromConfig> | undefined;
     try {
       const config = await loadConfig();
@@ -1774,14 +1792,33 @@ claudeIntegration
         )
       );
     }
-    const result = await handleClaudeHookStdin({
+
+    // Always persist the event
+    const persistResult = await handleClaudeHookStdin({
       projectDir: options.projectDir,
       storage,
     });
 
-    if (!result.handled && result.reason !== 'empty_stdin') {
-      const message = result.error ? `${result.reason}: ${result.error}` : result.reason;
+    if (!persistResult.handled && persistResult.reason !== 'empty_stdin') {
+      const message = persistResult.error
+        ? `${persistResult.reason}: ${persistResult.error}`
+        : persistResult.reason;
       console.error(chalk.yellow(`[runbook] Claude hook callback ignored (${message})`));
+      return;
+    }
+
+    // If context injection is enabled (default), process and return response
+    if (options.context !== false) {
+      const handlerResult = await handleHookStdinWithResponse(input, {
+        baseDir: options.projectDir || '.runbook',
+      });
+
+      if (handlerResult.handled && handlerResult.response) {
+        // Output JSON response for Claude to consume
+        if (handlerResult.response.systemMessage || handlerResult.response.continue === false) {
+          console.log(JSON.stringify(handlerResult.response));
+        }
+      }
     }
   });
 
@@ -1968,6 +2005,134 @@ program
       }
     }
   );
+
+// MCP server commands
+const mcp = program.command('mcp').description('Model Context Protocol server');
+
+mcp
+  .command('serve')
+  .description('Start MCP server for Claude Code integration')
+  .option('--base-dir <dir>', 'Base directory for knowledge', '.runbook')
+  .action(async (options: { baseDir: string }) => {
+    // Run in stdio mode for MCP
+    await runStdioServer({ baseDir: options.baseDir });
+  });
+
+mcp
+  .command('tools')
+  .description('List available MCP tools')
+  .action(() => {
+    const server = createMCPServer();
+    const tools = server.getTools();
+
+    console.log(chalk.cyan('Available MCP Tools:\n'));
+    for (const tool of tools) {
+      console.log(chalk.green(`  ${tool.name}`));
+      console.log(chalk.gray(`    ${tool.description}\n`));
+    }
+    server.close();
+  });
+
+// Checkpoint commands
+const checkpoint = program.command('checkpoint').description('Manage investigation checkpoints');
+
+checkpoint
+  .command('list')
+  .description('List checkpoints for an investigation or all investigations')
+  .option('--investigation <id>', 'Filter by investigation ID')
+  .action(async (options: { investigation?: string }) => {
+    const store = createCheckpointStore();
+
+    if (options.investigation) {
+      const checkpoints = await store.list(options.investigation);
+      if (checkpoints.length === 0) {
+        console.log(
+          chalk.yellow(`No checkpoints found for investigation: ${options.investigation}`)
+        );
+        return;
+      }
+      console.log(chalk.cyan(`Checkpoints for ${options.investigation}:\n`));
+      console.log(formatCheckpointList(checkpoints));
+    } else {
+      const investigations = await store.listInvestigations();
+      if (investigations.length === 0) {
+        console.log(chalk.yellow('No investigations with checkpoints found.'));
+        return;
+      }
+      console.log(chalk.cyan('Investigations with Checkpoints:\n'));
+      for (const inv of investigations) {
+        console.log(chalk.green(`  ${inv.investigationId}`));
+        console.log(chalk.gray(`    Checkpoints: ${inv.checkpointCount}`));
+        if (inv.latestCheckpoint) {
+          console.log(
+            chalk.gray(
+              `    Latest: ${inv.latestCheckpoint.phase} (${inv.latestCheckpoint.confidence}% confidence)`
+            )
+          );
+          console.log(
+            chalk.gray(`    Created: ${new Date(inv.latestCheckpoint.createdAt).toLocaleString()}`)
+          );
+        }
+        console.log();
+      }
+    }
+  });
+
+checkpoint
+  .command('show <checkpoint-id>')
+  .description('Show details of a specific checkpoint')
+  .option('--investigation <id>', 'Investigation ID (required if not inferrable)')
+  .action(async (checkpointId: string, options: { investigation?: string }) => {
+    const store = createCheckpointStore();
+
+    // Try to find the checkpoint
+    if (options.investigation) {
+      const cp = await store.load(options.investigation, checkpointId);
+      if (!cp) {
+        console.error(chalk.red(`Checkpoint not found: ${checkpointId}`));
+        process.exit(1);
+      }
+      console.log(formatCheckpoint(cp));
+    } else {
+      // Search all investigations
+      const investigations = await store.listInvestigations();
+      for (const inv of investigations) {
+        const cp = await store.load(inv.investigationId, checkpointId);
+        if (cp) {
+          console.log(formatCheckpoint(cp));
+          return;
+        }
+      }
+      console.error(chalk.red(`Checkpoint not found: ${checkpointId}`));
+      console.log(chalk.gray('Try specifying --investigation <id>'));
+      process.exit(1);
+    }
+  });
+
+checkpoint
+  .command('delete <checkpoint-id>')
+  .description('Delete a checkpoint')
+  .option('--investigation <id>', 'Investigation ID')
+  .option('--all', 'Delete all checkpoints for an investigation')
+  .action(async (checkpointId: string, options: { investigation?: string; all?: boolean }) => {
+    const store = createCheckpointStore();
+
+    if (options.all && options.investigation) {
+      const deleted = await store.deleteAll(options.investigation);
+      console.log(chalk.green(`Deleted ${deleted} checkpoints for ${options.investigation}`));
+    } else if (options.investigation) {
+      const success = await store.delete(options.investigation, checkpointId);
+      if (success) {
+        console.log(chalk.green(`Deleted checkpoint: ${checkpointId}`));
+      } else {
+        console.error(chalk.red(`Checkpoint not found: ${checkpointId}`));
+        process.exit(1);
+      }
+    } else {
+      console.error(chalk.red('Please specify --investigation <id>'));
+      process.exit(1);
+    }
+  });
 
 // Parse and run
 program.parse();
