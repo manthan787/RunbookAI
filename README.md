@@ -40,32 +40,39 @@ cd runbook
 # Install dependencies
 bun install
 
-# Set up configuration
-mkdir -p .runbook
-cp examples/config.yaml .runbook/config.yaml
-# Edit .runbook/config.yaml with your settings
+# Set up configuration with the wizard
+runbook init
 
-# Set your API key
-export ANTHROPIC_API_KEY=your-api-key
+# Example output (abridged):
+# ═══════════════════════════════════════════
+#  Runbook Setup Wizard
+# ═══════════════════════════════════════════
+# Step 1: Choose your AI provider
+# Step 2: Enter your API key
+# ...
+#  Setup Complete!
+# Configuration complete! Your settings have been saved to .runbook/services.yaml
 ```
+
+If you're running directly from source without a globally installed `runbook` binary, use `bun run dev <command>` as an equivalent.
 
 ## Quick Start
 
 ```bash
 # Ask about your infrastructure
-bun run dev ask "What EC2 instances are running in prod?"
+runbook ask "What EC2 instances are running in prod?"
 
 # Ask about Kubernetes state
-bun run dev ask "Show cluster status, top nodes, and any warning events"
+runbook ask "Show cluster status, top nodes, and any warning events"
 
 # Investigate an incident
-bun run dev investigate PD-12345
+runbook investigate PD-12345
 
 # Investigate + execute remediation steps via skills
-bun run dev investigate PD-12345 --auto-remediate
+runbook investigate PD-12345 --auto-remediate
 
 # Get a status overview
-bun run dev status
+runbook status
 ```
 
 ## Commands
@@ -214,7 +221,26 @@ See storage and ingestion architecture in [docs/CLAUDE_SESSION_STORAGE_PROPOSAL.
 
 ## Configuration
 
-Create `.runbook/config.yaml`:
+Use the setup wizard to generate and update config files:
+
+```bash
+runbook init
+```
+
+Example output (abridged):
+
+```text
+═══════════════════════════════════════════
+ Runbook Setup Wizard
+═══════════════════════════════════════════
+Step 1: Choose your AI provider
+Step 2: Enter your API key
+...
+ Setup Complete!
+Configuration complete! Your settings have been saved to .runbook/services.yaml
+```
+
+This writes `.runbook/config.yaml` and `.runbook/services.yaml`. A reference `config.yaml` looks like:
 
 ```yaml
 llm:

@@ -712,7 +712,7 @@
                   <span class="terminal-dot terminal-dot-yellow"></span>
                   <span class="terminal-dot terminal-dot-green"></span>
                 </div>
-                <button class="terminal-copy" data-copy="mkdir -p .runbook && cp examples/config.yaml .runbook/config.yaml && export ANTHROPIC_API_KEY=your-api-key" onclick="copyToClipboard(this)">
+                <button class="terminal-copy" data-copy="runbook init" onclick="copyToClipboard(this)">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
@@ -722,15 +722,15 @@
               <div class="terminal-body">
                 <div class="terminal-line">
                   <span class="terminal-prompt">$</span>
-                  <span class="terminal-command">mkdir -p .runbook</span>
+                  <span class="terminal-command">runbook init</span>
                 </div>
                 <div class="terminal-line">
-                  <span class="terminal-prompt">$</span>
-                  <span class="terminal-command">cp examples/config.yaml .runbook/config.yaml</span>
+                  <span class="terminal-prompt">></span>
+                  <span class="terminal-command">Runbook Setup Wizard</span>
                 </div>
                 <div class="terminal-line">
-                  <span class="terminal-prompt">$</span>
-                  <span class="terminal-command">export ANTHROPIC_API_KEY=your-api-key</span>
+                  <span class="terminal-prompt">></span>
+                  <span class="terminal-command">Configuration complete! Saved to .runbook/services.yaml</span>
                 </div>
               </div>
             </div>
@@ -748,7 +748,7 @@
                   <span class="terminal-dot terminal-dot-yellow"></span>
                   <span class="terminal-dot terminal-dot-green"></span>
                 </div>
-                <button class="terminal-copy" data-copy="bun run dev ask &quot;What EC2 instances are running?&quot;" onclick="copyToClipboard(this)">
+                <button class="terminal-copy" data-copy="runbook ask &quot;What EC2 instances are running?&quot;" onclick="copyToClipboard(this)">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
@@ -758,7 +758,7 @@
               <div class="terminal-body">
                 <div class="terminal-line">
                   <span class="terminal-prompt">$</span>
-                  <span class="terminal-command">bun run dev ask "What EC2 instances are running?"</span>
+                  <span class="terminal-command">runbook ask "What EC2 instances are running?"</span>
                 </div>
               </div>
             </div>
