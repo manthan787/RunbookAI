@@ -165,6 +165,14 @@ Hook events are persisted under:
 - `.runbook/hooks/claude/latest.json`
 - `.runbook/hooks/claude/sessions/<session-id>/events.ndjson`
 
+Generate learning artifacts directly from a stored Claude session:
+
+```bash
+runbook integrations claude learn <session-id> --incident-id PD-123
+```
+
+See storage and ingestion architecture in [docs/CLAUDE_SESSION_STORAGE_PROPOSAL.md](./docs/CLAUDE_SESSION_STORAGE_PROPOSAL.md).
+
 ## Configuration
 
 Create `.runbook/config.yaml`:
@@ -223,6 +231,22 @@ knowledge:
       clientSecret: ${GOOGLE_CLIENT_SECRET}
       refreshToken: ${GOOGLE_REFRESH_TOKEN}
       includeSubfolders: true
+
+integrations:
+  claude:
+    sessionStorage:
+      # local | s3
+      backend: local
+      # keep a local copy even if backend is s3
+      mirrorLocal: true
+      localBaseDir: .runbook/hooks/claude
+      s3:
+        bucket: your-runbook-session-logs
+        prefix: runbook/hooks/claude
+        region: us-east-1
+        # optional for MinIO/custom S3-compatible endpoints
+        endpoint: https://s3.amazonaws.com
+        forcePathStyle: false
 ```
 
 See [PLAN.md](./PLAN.md) for full configuration options.

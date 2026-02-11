@@ -37,6 +37,8 @@ import {
   installClaudeHooks,
   uninstallClaudeHooks,
 } from './integrations/claude-hooks';
+import { createClaudeSessionStorageFromConfig } from './integrations/claude-session-store';
+import { runLearningLoopFromClaudeSession } from './learning/claude-session-ingestion';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -1678,12 +1680,103 @@ claudeIntegration
   });
 
 claudeIntegration
+  .command('learn <session-id>')
+  .description('Run the learning loop using persisted Claude session events')
+  .option('--incident-id <incidentId>', 'Incident ID label to use in generated artifacts')
+  .option('--query <query>', 'Optional incident query override used by the learning loop')
+  .option(
+    '--apply-runbook-updates',
+    'Apply generated runbook updates/new runbooks into .runbook/runbooks'
+  )
+  .action(
+    async (
+      sessionId: string,
+      options: { incidentId?: string; query?: string; applyRunbookUpdates?: boolean }
+    ) => {
+      try {
+        const config = await loadConfig();
+        const configErrors = validateConfig(config);
+        if (configErrors.length > 0) {
+          console.error(chalk.red('Configuration errors:'));
+          configErrors.forEach((message) => console.error(chalk.red(`  - ${message}`)));
+          process.exit(1);
+        }
+
+        const storage = createClaudeSessionStorageFromConfig(config, {
+          projectDir: process.cwd(),
+        });
+        const sessionEvents = await storage.getSessionEvents(sessionId);
+        if (sessionEvents.length === 0) {
+          console.error(chalk.red(`No stored Claude events found for session "${sessionId}".`));
+          process.exit(1);
+        }
+
+        const llm = createLLMClient({
+          provider: config.llm.provider,
+          model: config.llm.model,
+          apiKey: config.llm.apiKey,
+        });
+
+        const learning = await runLearningLoopFromClaudeSession({
+          sessionId,
+          sessionEvents,
+          incidentId: options.incidentId,
+          query: options.query,
+          applyRunbookUpdates: options.applyRunbookUpdates || false,
+          complete: async (prompt: string) => {
+            const response = await llm.chat(
+              'You are an SRE postmortem and runbook improvement assistant. Return only valid JSON.',
+              prompt
+            );
+            return response.content;
+          },
+        });
+
+        console.log(chalk.green(`Artifacts: ${learning.artifactDir}`));
+        console.log(chalk.gray(`Postmortem draft: ${learning.postmortemPath}`));
+        console.log(chalk.gray(`Suggestions: ${learning.suggestionsPath}`));
+        if (learning.appliedRunbookUpdates.length > 0) {
+          console.log(
+            chalk.green(`Applied runbook updates: ${learning.appliedRunbookUpdates.length}`)
+          );
+        }
+        if (learning.proposedRunbookUpdates.length > 0) {
+          console.log(
+            chalk.yellow(`Proposed updates/docs: ${learning.proposedRunbookUpdates.length}`)
+          );
+        }
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `Failed to run Claude session learning loop: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
+        process.exit(1);
+      }
+    }
+  );
+
+claudeIntegration
   .command('hook', { hidden: true })
   .description('Internal Claude hook entrypoint')
   .option('--project-dir <dir>', 'Override project directory for storing hook artifacts')
   .action(async (options: { projectDir?: string }) => {
+    let storage: ReturnType<typeof createClaudeSessionStorageFromConfig> | undefined;
+    try {
+      const config = await loadConfig();
+      storage = createClaudeSessionStorageFromConfig(config, {
+        projectDir: options.projectDir || process.cwd(),
+      });
+    } catch (error) {
+      console.error(
+        chalk.yellow(
+          `[runbook] Claude hook storage config invalid; falling back to local artifact persistence (${error instanceof Error ? error.message : String(error)})`
+        )
+      );
+    }
     const result = await handleClaudeHookStdin({
       projectDir: options.projectDir,
+      storage,
     });
 
     if (!result.handled && result.reason !== 'empty_stdin') {

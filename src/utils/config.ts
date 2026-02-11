@@ -142,6 +142,29 @@ const AgentConfigSchema = z.object({
   contextThresholdTokens: z.number().default(100000),
 });
 
+const ClaudeSessionStorageS3Schema = z.object({
+  bucket: z.string().optional(),
+  prefix: z.string().default('runbook/hooks/claude'),
+  region: z.string().optional(),
+  endpoint: z.string().optional(),
+  forcePathStyle: z.boolean().default(false),
+});
+
+const ClaudeSessionStorageSchema = z.object({
+  backend: z.enum(['local', 's3']).default('local'),
+  mirrorLocal: z.boolean().default(true),
+  localBaseDir: z.string().default('.runbook/hooks/claude'),
+  s3: ClaudeSessionStorageS3Schema.default({}),
+});
+
+const ClaudeIntegrationSchema = z.object({
+  sessionStorage: ClaudeSessionStorageSchema.default({}),
+});
+
+const IntegrationsConfigSchema = z.object({
+  claude: ClaudeIntegrationSchema.default({}),
+});
+
 const ConfigSchema = z.object({
   llm: LLMConfigSchema.default({}),
   providers: z
@@ -154,6 +177,7 @@ const ConfigSchema = z.object({
   knowledge: KnowledgeConfigSchema.default({}),
   safety: SafetyConfigSchema.default({}),
   agent: AgentConfigSchema.default({}),
+  integrations: IntegrationsConfigSchema.default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -298,6 +322,13 @@ export function validateConfig(config: Config): string[] {
     if (config.incident.slack.events.mode === 'socket' && !config.incident.slack.appToken) {
       errors.push('Slack Socket Mode enabled but no app token configured.');
     }
+  }
+
+  if (
+    config.integrations.claude.sessionStorage.backend === 's3' &&
+    !config.integrations.claude.sessionStorage.s3.bucket
+  ) {
+    errors.push('Claude session storage backend is s3 but no bucket is configured.');
   }
 
   return errors;
