@@ -81,7 +81,7 @@
           <span class="hero-badge-dot"></span>
           <span>Open Source</span>
           <span class="hero-badge-separator"></span>
-          <span>AI-Powered</span>
+          <span>Claude Code Integration</span>
           <span class="hero-badge-separator"></span>
           <span>Production Ready</span>
         </div>
@@ -438,18 +438,64 @@
             <p>Built-in and custom skills executed step-by-step with approval hooks. Extend with your own workflows and automations.</p>
           </div>
 
-          <div class="feature-card feature-card-large">
+          <div class="feature-card">
             <div class="feature-card-icon feature-card-icon-pink">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </div>
             <h3>Slack Gateway</h3>
-            <p>Mention @runbookAI in your alert channels. Socket Mode for local development, Events API for production. Threaded conversations keep context organized.</p>
+            <p>Mention @runbookAI in your alert channels. Socket Mode for local development, Events API for production.</p>
+          </div>
+
+          <div class="feature-card feature-card-large">
+            <div class="feature-card-icon" style="background: linear-gradient(135deg, rgba(217, 119, 87, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); color: #d97757;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h3>Claude Code Integration</h3>
+            <p>Deep integration with Claude Code for contextual knowledge during coding sessions. Auto-inject relevant runbooks, known issues, and postmortems based on what you're discussing. MCP server for on-demand queries.</p>
             <div class="feature-card-detail">
-              <code>runbook slack-gateway --mode socket</code>
+              <code>runbook integrations claude enable</code>
             </div>
           </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <h3>Learning Loop</h3>
+            <p>Automatically generates runbook updates and postmortems from investigations. Your knowledge base grows with every incident.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4"/>
+                <path d="M12 8h.01"/>
+              </svg>
+            </div>
+            <h3>Trust & Transparency</h3>
+            <p>See exactly what the agent is thinking. Evidence trails, confidence scores, and clear reasoning for every hypothesis.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon feature-card-icon-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </div>
+            <h3>Session Checkpoints</h3>
+            <p>Save and resume investigation state across sessions. Never lose context when switching between incidents.</p>
+          </div>
+
         </div>
       </div>
     </section>
