@@ -167,19 +167,26 @@ bun run build</code></pre>
 
         <!-- Configuration -->
         <h2 id="configuration">Configuration</h2>
-        <p>Create a <code>.runbook</code> directory in your project root and add your configuration file:</p>
+        <p>Initialize your configuration with the setup wizard:</p>
 
         <div class="config-block">
           <div class="config-header">Terminal</div>
-          <pre><code>mkdir -p .runbook
-cp examples/config.yaml .runbook/config.yaml</code></pre>
+          <pre><code>runbook init</code></pre>
         </div>
 
-        <p>Set your Anthropic API key as an environment variable:</p>
+        <p>Demo output (abridged):</p>
 
         <div class="config-block">
-          <div class="config-header">Terminal</div>
-          <pre><code>export ANTHROPIC_API_KEY=your-api-key</code></pre>
+          <div class="config-header">Output</div>
+          <pre><code>$ runbook init
+═══════════════════════════════════════════
+ Runbook Setup Wizard
+═══════════════════════════════════════════
+Step 1: Choose your AI provider
+Step 2: Enter your API key
+...
+ Setup Complete!
+Configuration complete! Your settings have been saved to .runbook/services.yaml</code></pre>
         </div>
 
         <h3>Full Configuration Reference</h3>
@@ -249,13 +256,13 @@ knowledge:
         <div class="config-block">
           <div class="config-header">Terminal</div>
           <pre><code># Ask about your infrastructure
-bun run dev ask "What EC2 instances are running in prod?"
+runbook ask "What EC2 instances are running in prod?"
 
 # Check Kubernetes cluster status
-bun run dev ask "Show cluster status and any warning events"
+runbook ask "Show cluster status and any warning events"
 
 # Get a status overview
-bun run dev status</code></pre>
+runbook status</code></pre>
         </div>
 
         <div class="info-box info-box-tip">

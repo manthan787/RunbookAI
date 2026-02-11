@@ -33,16 +33,16 @@ cd runbook
 # Install dependencies
 bun install
 
-# Set up configuration
-mkdir -p .runbook
-cp examples/config.yaml .runbook/config.yaml
-# Edit .runbook/config.yaml with your settings
+# Set up configuration with the wizard
+runbook init
 
 # Set your API key
 export ANTHROPIC_API_KEY=your-api-key
 # Run your first investigation
 bun run dev investigate PD-12345
 ```
+
+If you're running directly from source without a globally installed `runbook` binary, use `bun run dev <command>` as an equivalent.
 
 Expected output shape:
 - Root-cause hypothesis with confidence
@@ -222,7 +222,26 @@ See storage and ingestion architecture in [docs/CLAUDE_SESSION_STORAGE_PROPOSAL.
 
 ## Configuration
 
-Create `.runbook/config.yaml`:
+Use the setup wizard to generate and update config files:
+
+```bash
+runbook init
+```
+
+Example output (abridged):
+
+```text
+═══════════════════════════════════════════
+ Runbook Setup Wizard
+═══════════════════════════════════════════
+Step 1: Choose your AI provider
+Step 2: Enter your API key
+...
+ Setup Complete!
+Configuration complete! Your settings have been saved to .runbook/services.yaml
+```
+
+This writes `.runbook/config.yaml` and `.runbook/services.yaml`. A reference `config.yaml` looks like:
 
 ```yaml
 llm:
