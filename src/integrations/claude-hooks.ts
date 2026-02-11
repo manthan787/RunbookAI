@@ -2,6 +2,11 @@ import { existsSync } from 'fs';
 import { appendFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { homedir } from 'os';
 import { dirname, join, resolve } from 'path';
+import type {
+  ClaudeSessionEventRecord,
+  ClaudeSessionStorage,
+  ClaudeSessionStorageDestination,
+} from './claude-session-store';
 
 export type ClaudeSettingsScope = 'project' | 'user';
 
@@ -76,6 +81,7 @@ export interface ClaudeHookStatusResult {
 export interface PersistClaudeHookEventOptions {
   projectDir?: string;
   now?: Date;
+  storage?: ClaudeSessionStorage;
 }
 
 export interface PersistClaudeHookEventResult {
@@ -85,6 +91,7 @@ export interface PersistClaudeHookEventResult {
   latestEventFile: string;
   sessionId: string;
   eventName: string;
+  destinations?: ClaudeSessionStorageDestination[];
 }
 
 export interface HandleClaudeHookStdinResult {
@@ -430,6 +437,30 @@ export async function persistClaudeHookEvent(
   const eventName = asString(payload.hook_event_name) || 'UnknownEvent';
   const now = options.now || new Date();
 
+  const eventRecord: ClaudeSessionEventRecord = {
+    observedAt: now.toISOString(),
+    sessionId,
+    eventName,
+    cwd: payloadCwd || projectDir,
+    transcriptPath: asString(payload.transcript_path) || null,
+    payload: payload as Record<string, unknown>,
+  };
+
+  const prompt = asString(payload.prompt);
+  if (options.storage) {
+    const persisted = await options.storage.persistEvent(eventRecord, { prompt });
+    const destinations = [persisted.primary, ...persisted.mirrors];
+    return {
+      baseDir: persisted.primary.baseLocation,
+      sessionDir: persisted.primary.sessionLocation,
+      eventsFile: persisted.primary.eventsLocation,
+      latestEventFile: persisted.primary.latestLocation,
+      sessionId,
+      eventName,
+      destinations,
+    };
+  }
+
   const baseDir = join(projectDir, '.runbook', 'hooks', 'claude');
   const sessionDir = join(baseDir, 'sessions', sanitizeSessionId(sessionId));
   const eventsFile = join(sessionDir, 'events.ndjson');
@@ -437,19 +468,9 @@ export async function persistClaudeHookEvent(
 
   await mkdir(sessionDir, { recursive: true });
 
-  const eventRecord = {
-    observedAt: now.toISOString(),
-    sessionId,
-    eventName,
-    cwd: payloadCwd || projectDir,
-    transcriptPath: asString(payload.transcript_path) || null,
-    payload,
-  };
-
   await appendFile(eventsFile, `${JSON.stringify(eventRecord)}\n`, 'utf-8');
   await writeFile(latestEventFile, `${JSON.stringify(eventRecord, null, 2)}\n`, 'utf-8');
 
-  const prompt = asString(payload.prompt);
   if (prompt) {
     await writeFile(join(sessionDir, 'last-prompt.txt'), `${prompt}\n`, 'utf-8');
   }

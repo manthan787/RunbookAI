@@ -8,6 +8,7 @@ import {
   persistClaudeHookEvent,
   uninstallClaudeHooks,
 } from '../claude-hooks';
+import type { ClaudeSessionStorage } from '../claude-session-store';
 
 function readJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, 'utf-8')) as Record<string, unknown>;
@@ -207,5 +208,55 @@ describe('claude-hooks integration', () => {
     expect(event.eventName).toBe('UserPromptSubmit');
     expect(event.sessionId).toBe('sess-123');
     expect(event.observedAt).toBe('2026-02-11T12:00:00.000Z');
+  });
+
+  it('routes hook persistence through configured storage when provided', async () => {
+    const calls: Array<{ sessionId: string; eventName: string; prompt?: string }> = [];
+    const storage: ClaudeSessionStorage = {
+      async persistEvent(event, options) {
+        calls.push({
+          sessionId: event.sessionId,
+          eventName: event.eventName,
+          prompt: options?.prompt,
+        });
+        return {
+          primary: {
+            backend: 's3',
+            baseLocation: 's3://runbook-test/hooks/claude',
+            sessionLocation: 's3://runbook-test/hooks/claude/sessions/sess-remote',
+            eventsLocation: 's3://runbook-test/hooks/claude/sessions/sess-remote/events.ndjson',
+            latestLocation: 's3://runbook-test/hooks/claude/latest.json',
+          },
+          mirrors: [],
+        };
+      },
+      async getSessionEvents() {
+        return [];
+      },
+    };
+
+    const saved = await persistClaudeHookEvent(
+      {
+        session_id: 'sess-remote',
+        hook_event_name: 'Stop',
+        cwd: process.cwd(),
+        prompt: 'Generate incident summary',
+      },
+      {
+        now: new Date('2026-02-11T12:30:00.000Z'),
+        storage,
+      }
+    );
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({
+      sessionId: 'sess-remote',
+      eventName: 'Stop',
+      prompt: 'Generate incident summary',
+    });
+    expect(saved.eventsFile).toBe(
+      's3://runbook-test/hooks/claude/sessions/sess-remote/events.ndjson'
+    );
+    expect(saved.latestEventFile).toBe('s3://runbook-test/hooks/claude/latest.json');
   });
 });
