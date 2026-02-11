@@ -46,6 +46,9 @@ describe('claude-session-store', () => {
     expect(events).toHaveLength(1);
     expect(events[0].eventName).toBe('UserPromptSubmit');
     expect(events[0].sessionId).toBe('sess-local-1');
+
+    const sessions = await storage.listRecentSessionIds(5);
+    expect(sessions).toContain('sess-local-1');
   });
 
   it('rejects s3 backend when bucket is not configured', () => {

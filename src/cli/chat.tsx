@@ -18,6 +18,7 @@ import { skillRegistry } from '../skills/registry';
 import { getRuntimeTools } from './runtime-tools';
 import { createRetriever } from '../knowledge/retriever';
 import { createMemory, type ConversationMemory } from '../agent/conversation-memory';
+import { ClaudeSessionContextSubagent } from '../integrations/claude-session-context-subagent';
 
 const LOGO = `
   ____              _                 _       _    ___
@@ -63,6 +64,7 @@ export function ChatInterface() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const memoryRef = useRef<ConversationMemory>(createMemory({ summarizeAfterMessages: 16 }));
+  const sessionContextSubagentRef = useRef<ClaudeSessionContextSubagent | null>(null);
 
   // Initialize agent on mount
   useEffect(() => {
@@ -92,6 +94,9 @@ export function ChatInterface() {
       const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
       const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
       const retriever = createRetriever();
+      sessionContextSubagentRef.current = new ClaudeSessionContextSubagent(config, {
+        projectDir: process.cwd(),
+      });
 
       const newAgent = new Agent({
         llm,
@@ -109,10 +114,22 @@ export function ChatInterface() {
 
             const query =
               queryParts.join(' ').trim() || 'production incident investigation runbook';
-            return retriever.search(query, {
-              limit: 20,
-              serviceFilter: context.services.length > 0 ? context.services : undefined,
-            });
+            const [knowledge, claudeContext] = await Promise.all([
+              retriever.search(query, {
+                limit: 20,
+                serviceFilter: context.services.length > 0 ? context.services : undefined,
+              }),
+              sessionContextSubagentRef.current?.collectRelevantContext({
+                query,
+                incidentId: context.incidentId,
+              }) || Promise.resolve(null),
+            ]);
+
+            if (claudeContext) {
+              knowledge.knownIssues.unshift(claudeContext.knowledgeChunk);
+            }
+
+            return knowledge;
           },
         },
         config: {

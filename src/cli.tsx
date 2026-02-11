@@ -38,6 +38,7 @@ import {
   uninstallClaudeHooks,
 } from './integrations/claude-hooks';
 import { createClaudeSessionStorageFromConfig } from './integrations/claude-session-store';
+import { ClaudeSessionContextSubagent } from './integrations/claude-session-context-subagent';
 import { runLearningLoopFromClaudeSession } from './learning/claude-session-ingestion';
 
 // Version from package.json
@@ -46,8 +47,12 @@ const VERSION = '0.1.0';
 /**
  * Knowledge retriever adapter for Agent runtime.
  */
-function createAgentKnowledgeRetriever() {
+function createAgentKnowledgeRetriever(
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  projectDir: string
+) {
   const retriever = createRetriever();
+  const sessionContextSubagent = new ClaudeSessionContextSubagent(config, { projectDir });
 
   return {
     retrieve: async (context: {
@@ -66,15 +71,30 @@ function createAgentKnowledgeRetriever() {
       ].filter(Boolean) as string[];
 
       const query = queryParts.join(' ').trim() || 'production incident investigation runbook';
-      return retriever.search(query, {
-        limit: 20,
-        serviceFilter: context.services.length > 0 ? context.services : undefined,
-      });
+      const [knowledge, claudeContext] = await Promise.all([
+        retriever.search(query, {
+          limit: 20,
+          serviceFilter: context.services.length > 0 ? context.services : undefined,
+        }),
+        sessionContextSubagent.collectRelevantContext({
+          query,
+          incidentId: context.incidentId,
+        }),
+      ]);
+
+      if (claudeContext) {
+        knowledge.knownIssues.unshift(claudeContext.knowledgeChunk);
+      }
+
+      return knowledge;
     },
   };
 }
 
-async function createRuntimeAgent(config: Awaited<ReturnType<typeof loadConfig>>): Promise<Agent> {
+async function createRuntimeAgent(
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  options: { projectDir?: string } = {}
+): Promise<Agent> {
   const llm = createLLMClient({
     provider: config.llm.provider,
     model: config.llm.model,
@@ -89,7 +109,7 @@ async function createRuntimeAgent(config: Awaited<ReturnType<typeof loadConfig>>
     llm,
     tools: runtimeTools,
     skills: runtimeSkills,
-    knowledgeRetriever: createAgentKnowledgeRetriever(),
+    knowledgeRetriever: createAgentKnowledgeRetriever(config, options.projectDir || process.cwd()),
     config: {
       maxIterations: config.agent.maxIterations,
       maxHypothesisDepth: config.agent.maxHypothesisDepth,
@@ -603,6 +623,14 @@ async function runStructuredInvestigation(
     model: config.llm.model,
     apiKey: config.llm.apiKey,
   });
+  const investigationQuery = `Investigate incident ${incidentId}. Identify the root cause with supporting evidence.`;
+  const sessionContextSubagent = new ClaudeSessionContextSubagent(config, {
+    projectDir: process.cwd(),
+  });
+  const sessionContextPromise = sessionContextSubagent.collectRelevantContext({
+    query: investigationQuery,
+    incidentId,
+  });
   await skillRegistry.loadUserSkills();
   const runtimeSkills = skillRegistry.getAll().map((skill) => skill.id);
   const runtimeTools = await getRuntimeTools(config, toolRegistry.getAll());
@@ -867,8 +895,17 @@ async function runStructuredInvestigation(
     }
   });
 
-  const query = `Investigate incident ${incidentId}. Identify the root cause with supporting evidence.`;
-  const result = await orchestrator.investigate(query);
+  const sessionContext = await sessionContextPromise.catch(() => null);
+  if (verbose && sessionContext) {
+    console.log(
+      chalk.gray(
+        `Claude session subagent loaded ${sessionContext.selectedEventCount} events from ${sessionContext.selectedSessionIds.length} session(s).`
+      )
+    );
+  }
+
+  const query = investigationQuery;
+  const result = await orchestrator.investigate(query, sessionContext?.contextBlock);
 
   console.log();
   console.log(chalk.green('Investigation Complete'));

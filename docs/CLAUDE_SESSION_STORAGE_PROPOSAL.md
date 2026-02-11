@@ -40,6 +40,19 @@ This command:
 3. synthesizes investigation metadata
 4. runs the existing learning loop pipeline
 
+### 4) Automatic session-context subagent (chat + investigate)
+
+Runbook now runs a lightweight session-context subagent in parallel during:
+- chat loop retrieval
+- structured investigation startup
+
+The subagent:
+1. lists recent stored Claude sessions
+2. scores relevance against the active query/incident context
+3. injects a compact summary as supplemental context
+
+This keeps ongoing sessions aware of prior investigative work without forcing manual commands.
+
 ## Config
 
 ```yaml

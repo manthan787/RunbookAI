@@ -233,6 +233,9 @@ describe('claude-hooks integration', () => {
       async getSessionEvents() {
         return [];
       },
+      async listRecentSessionIds() {
+        return [];
+      },
     };
 
     const saved = await persistClaudeHookEvent(

@@ -171,6 +171,8 @@ Generate learning artifacts directly from a stored Claude session:
 runbook integrations claude learn <session-id> --incident-id PD-123
 ```
 
+Runbook automatically runs a Claude-session context subagent during chat and structured investigations. It retrieves recent relevant Claude session logs in parallel and injects a concise context summary into retrieval/triage prompts.
+
 See storage and ingestion architecture in [docs/CLAUDE_SESSION_STORAGE_PROPOSAL.md](./docs/CLAUDE_SESSION_STORAGE_PROPOSAL.md).
 
 ## Configuration

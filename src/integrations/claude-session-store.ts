@@ -1,6 +1,11 @@
 import { existsSync } from 'fs';
-import { appendFile, mkdir, readFile, writeFile } from 'fs/promises';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { appendFile, mkdir, readdir, readFile, stat, writeFile } from 'fs/promises';
+import {
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { isAbsolute, join } from 'path';
 import type { Config } from '../utils/config';
 
@@ -34,6 +39,7 @@ export interface ClaudeSessionStorage {
     options?: { prompt?: string }
   ): Promise<ClaudeSessionPersistResult>;
   getSessionEvents(sessionId: string): Promise<ClaudeSessionEventRecord[]>;
+  listRecentSessionIds(limit?: number): Promise<string[]>;
 }
 
 export interface CreateClaudeSessionStorageOptions {
@@ -62,6 +68,7 @@ interface SessionBackend {
     options?: { prompt?: string }
   ): Promise<ClaudeSessionStorageDestination>;
   getSessionEvents(sessionId: string): Promise<ClaudeSessionEventRecord[]>;
+  listRecentSessionIds(limit: number): Promise<string[]>;
 }
 
 function sanitizeSessionId(sessionId: string): string {
@@ -164,6 +171,33 @@ function createLocalBackend(baseDir: string): SessionBackend {
         }
       }
       return events;
+    },
+    async listRecentSessionIds(limit) {
+      const sessionsRoot = join(baseDir, 'sessions');
+      if (!existsSync(sessionsRoot)) {
+        return [];
+      }
+
+      const entries = await readdir(sessionsRoot, { withFileTypes: true });
+      const candidates: Array<{ sessionId: string; modifiedAt: number }> = [];
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+        const eventsPath = join(sessionsRoot, entry.name, 'events.ndjson');
+        if (!existsSync(eventsPath)) {
+          continue;
+        }
+        const metadata = await stat(eventsPath);
+        candidates.push({
+          sessionId: entry.name,
+          modifiedAt: metadata.mtimeMs,
+        });
+      }
+
+      candidates.sort((a, b) => b.modifiedAt - a.modifiedAt);
+      return candidates.slice(0, limit).map((item) => item.sessionId);
     },
   };
 }
@@ -324,6 +358,48 @@ function createS3Backend(config: ClaudeS3StorageConfig): SessionBackend {
       }
       return events;
     },
+    async listRecentSessionIds(limit) {
+      const sessionPrefix = prefix ? `${prefix}/sessions/` : 'sessions/';
+      const results: Array<{ sessionId: string; modifiedAt: number }> = [];
+      let continuationToken: string | undefined;
+
+      do {
+        const response = await client.send(
+          new ListObjectsV2Command({
+            Bucket: config.bucket,
+            Prefix: sessionPrefix,
+            ContinuationToken: continuationToken,
+            MaxKeys: 200,
+          })
+        );
+
+        for (const obj of response.Contents || []) {
+          const key = obj.Key || '';
+          if (!key.endsWith('/events.ndjson')) {
+            continue;
+          }
+
+          const withoutPrefix = key.startsWith(sessionPrefix)
+            ? key.slice(sessionPrefix.length)
+            : key;
+          const sessionId = withoutPrefix.split('/')[0];
+          if (!sessionId) {
+            continue;
+          }
+
+          results.push({
+            sessionId,
+            modifiedAt: obj.LastModified ? obj.LastModified.getTime() : 0,
+          });
+        }
+
+        continuationToken = response.NextContinuationToken;
+      } while (continuationToken && results.length < limit * 3);
+
+      results.sort((a, b) => b.modifiedAt - a.modifiedAt);
+      const unique = Array.from(new Set(results.map((item) => item.sessionId)));
+      return unique.slice(0, limit);
+    },
   };
 }
 
@@ -382,6 +458,22 @@ export function createClaudeSessionStorageFromConfig(
         const fallbackEvents = await mirror.getSessionEvents(sessionId);
         if (fallbackEvents.length > 0) {
           return fallbackEvents;
+        }
+      }
+
+      return [];
+    },
+    async listRecentSessionIds(limit = 5) {
+      const normalizedLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 5;
+      const primarySessions = await primary.listRecentSessionIds(normalizedLimit);
+      if (primarySessions.length > 0) {
+        return primarySessions;
+      }
+
+      for (const mirror of mirrorBackends) {
+        const mirrorSessions = await mirror.listRecentSessionIds(normalizedLimit);
+        if (mirrorSessions.length > 0) {
+          return mirrorSessions;
         }
       }
 
