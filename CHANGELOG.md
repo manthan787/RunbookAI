@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.3...v0.3.0) (2026-02-12)
+
+
+### Features
+
+* add demo command for zero-config experience ([#54](https://github.com/Runbook-Agent/RunbookAI/issues/54)) ([8527e4a](https://github.com/Runbook-Agent/RunbookAI/commit/8527e4ac7fa837102358eae2f246d332800753fb))
+
 ## [0.2.3](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.2...v0.2.3) (2026-02-12)
 
 
