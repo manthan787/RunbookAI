@@ -8,6 +8,9 @@
   "bin": {
     "runbook": "dist/cli.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx src/cli.tsx",
     "build": "tsc && chmod +x dist/cli.js",
