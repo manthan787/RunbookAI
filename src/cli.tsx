@@ -1120,6 +1120,16 @@ program
     }
   });
 
+// Demo command - showcase investigation without API keys
+program
+  .command('demo')
+  .description('Run a demo investigation (no API keys required)')
+  .option('--fast', 'Run demo at 3x speed')
+  .action(async (options: { fast?: boolean }) => {
+    const { runDemo } = await import('./demo/demo-runner');
+    await runDemo({ fast: options.fast });
+  });
+
 // Knowledge commands
 const knowledge = program.command('knowledge').description('Manage knowledge base');
 
