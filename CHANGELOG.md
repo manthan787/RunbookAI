@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.0...v0.2.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* publish to npm inside release-please workflow ([#43](https://github.com/Runbook-Agent/RunbookAI/issues/43)) ([24d844d](https://github.com/Runbook-Agent/RunbookAI/commit/24d844d309f96749c04eba3471fad440d62e58b4))
+
 ## [0.2.0](https://github.com/Runbook-Agent/RunbookAI/compare/v0.1.0...v0.2.0) (2026-02-12)
 
 
