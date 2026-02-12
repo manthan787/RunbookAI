@@ -391,7 +391,7 @@ body {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.08) 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: var(--radius-lg);
-  max-width: 480px;
+  max-width: 720px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -414,9 +414,12 @@ body {
 
 .hero-demo-command code {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 14px;
   color: var(--color-text);
   font-weight: 500;
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .hero-demo-command .install-copy {
@@ -1608,12 +1611,12 @@ body {
   }
 
   .hero-demo-command {
-    flex-wrap: wrap;
-    justify-content: center;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .hero-demo-command code {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .workflow {
