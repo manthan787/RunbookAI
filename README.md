@@ -19,56 +19,83 @@ RunbookAI helps on-call engineers go from alert to likely root cause faster with
 
 Built for SRE and platform teams operating AWS and Kubernetes who need speed without losing auditability.
 
-## Start in 60 Seconds
+## Try It Now (No API Keys Required)
 
-### Install via npm
+See RunbookAI's hypothesis-driven investigation in action:
 
 ```bash
-# Install globally
-npm install -g @runbook-agent/runbook
+npx @runbook-agent/runbook demo
+```
 
-# Verify installation
-runbook --help
+Watch the agent investigate a simulated incident—forming hypotheses, gathering evidence, and identifying root cause—all in your terminal.
+
+```text
+⚠  INCIDENT ALERT
+   ID: DEMO-001
+   High latency on checkout-api
+
+▸ Gathering incident context...
+  ┌─ get_incident_details
+  └─ Severity: High, Error rate: 15%, P99 latency: 2,500ms
+
+▸ Forming hypotheses...
+  H1: Redis connection pool exhaustion (72%)
+  H2: Database connection pool exhaustion (54%)
+
+▸ Testing H1: Redis connection exhaustion...
+  ✓ Evidence: Redis connections at 847/1000 (340% above baseline)
+  ✓ Evidence: Traffic spike correlates with connection exhaustion
+
+ ROOT CAUSE IDENTIFIED
+  Redis connection pool exhaustion due to traffic spike
+  Confidence: 94%
+```
+
+Use `--fast` for a quicker demo: `npx @runbook-agent/runbook demo --fast`
+
+## Get Started
+
+### Install
+
+```bash
+npm install -g @runbook-agent/runbook
 ```
 
 Package: [`@runbook-agent/runbook`](https://www.npmjs.com/package/@runbook-agent/runbook)
 
-### From Source (Development)
-
-### Prerequisites
-- Node.js 20+
-- Bun
-- Anthropic API key (`ANTHROPIC_API_KEY`)
+### Configure
 
 ```bash
-# Clone the repository
-git clone https://github.com/Runbook-Agent/RunbookAI.git runbook
-cd runbook
-
-# Install dependencies
-bun install
-
-# Set up configuration with the wizard
-runbook init
-
 # Set your API key
 export ANTHROPIC_API_KEY=your-api-key
-# Run your first investigation
-bun run dev investigate PD-12345
+
+# Run the setup wizard
+runbook init
 ```
 
-If you're running directly from source without a globally installed `runbook` binary, use `bun run dev <command>` as an equivalent.
+### Run Your First Investigation
 
-Expected output shape:
-- Root-cause hypothesis with confidence
-- Evidence log of the checks performed
-- Remediation suggestions, gated behind approval where needed
+```bash
+runbook investigate PD-12345
+```
 
+Expected output:
 ```text
 Investigation: PD-12345
 Hypothesis: checkout-api latency spike caused by Redis connection exhaustion (confidence: 0.86)
 Evidence: CloudWatch errors, Redis saturation, pod restart timeline
 Next step: apply runbook "Redis Connection Exhaustion" (approval required)
+```
+
+### From Source (Development)
+
+Prerequisites: Node.js 20+, Bun
+
+```bash
+git clone https://github.com/Runbook-Agent/RunbookAI.git runbook
+cd runbook
+bun install
+bun run dev investigate PD-12345
 ```
 
 ## Why Teams Adopt RunbookAI
@@ -92,6 +119,15 @@ Next step: apply runbook "Redis Connection Exhaustion" (approval required)
 ## Commands
 
 Commands below use the installed `runbook` binary. During local development, use `bun run dev <command>`.
+
+### `runbook demo`
+
+Run a pre-scripted investigation demo showcasing RunbookAI's hypothesis-driven workflow. No API keys or configuration required.
+
+```bash
+runbook demo           # Normal speed
+runbook demo --fast    # 3x speed
+```
 
 ### `runbook ask <query>`
 
