@@ -24,10 +24,7 @@ Built for SRE and platform teams operating AWS and Kubernetes who need speed wit
 See RunbookAI's hypothesis-driven investigation in action:
 
 ```bash
-# Clone and run the demo
-git clone https://github.com/Runbook-Agent/RunbookAI.git
-cd RunbookAI && npm install
-npx tsx src/cli.tsx demo
+npx @runbook-agent/runbook demo
 ```
 
 Watch the agent investigate a simulated incident—forming hypotheses, gathering evidence, and identifying root cause—all in your terminal.
@@ -54,7 +51,7 @@ Watch the agent investigate a simulated incident—forming hypotheses, gathering
   Confidence: 94%
 ```
 
-Use `--fast` for a quicker demo: `npx tsx src/cli.tsx demo --fast`
+Use `--fast` for a quicker demo: `npx @runbook-agent/runbook demo --fast`
 
 ## Get Started
 

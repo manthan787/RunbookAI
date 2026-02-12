@@ -391,7 +391,7 @@ body {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.08) 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: var(--radius-lg);
-  max-width: 720px;
+  max-width: 480px;
   margin-left: auto;
   margin-right: auto;
 }
