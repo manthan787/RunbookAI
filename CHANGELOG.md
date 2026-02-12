@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.1...v0.2.2) (2026-02-12)
+
+
+### Bug Fixes
+
+* enforce tokenless npm trusted publishing in release workflow ([#45](https://github.com/Runbook-Agent/RunbookAI/issues/45)) ([fdcd375](https://github.com/Runbook-Agent/RunbookAI/commit/fdcd375b87c81320305a4034c7db3646cac361f6))
+
 ## [0.2.1](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.0...v0.2.1) (2026-02-12)
 
 
