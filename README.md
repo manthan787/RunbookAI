@@ -458,16 +458,13 @@ This repository uses [Release Please](https://github.com/googleapis/release-plea
 2. `Release Please` workflow updates or opens a release PR with version bumps + changelog updates.
 3. Merge that release PR.
 4. Release Please creates a git tag (`vX.Y.Z`) and publishes a GitHub Release.
-5. Optional: npm publishing runs automatically for that release when enabled.
+5. In the same workflow run, npm publish executes automatically when enabled.
 
 ### Workflows
 
 - `/.github/workflows/release-please.yml`
   - Trigger: push to `main` (or manual dispatch)
-  - Responsibility: maintain release PR, create tags/releases after release PR merge
-- `/.github/workflows/publish-npm.yml`
-  - Trigger: GitHub Release published
-  - Responsibility: validate tag/version match, run checks, publish to npm
+  - Responsibility: maintain release PR, create tags/releases after release PR merge, then publish to npm when a release is created
 
 ### One-Command Release Trigger
 
@@ -499,7 +496,7 @@ Use npm Trusted Publishing (OIDC), then enable publishing:
 - npm package settings: add this repository/workflow as a trusted publisher
   - Provider: GitHub Actions
   - Repository: `Runbook-Agent/RunbookAI`
-  - Workflow filename: `publish-npm.yml`
+  - Workflow filename: `release-please.yml`
 - GitHub repo variable: `NPM_PUBLISH_ENABLED=true`
 
 Notes:
