@@ -1,5 +1,5 @@
 {
-  "name": "runbook",
+  "name": "@runbook-agent/runbook",
   "version": "0.1.0",
   "description": "Agentic cloud operator and incident investigator",
   "type": "module",
@@ -82,5 +82,8 @@
       "eslint",
       "prettier --check"
     ]
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
