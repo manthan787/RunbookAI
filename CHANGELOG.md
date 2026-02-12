@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.2...v0.2.3) (2026-02-12)
+
+
+### Bug Fixes
+
+* add npm provenance metadata and normalize bin path ([#49](https://github.com/Runbook-Agent/RunbookAI/issues/49)) ([4a1b5bc](https://github.com/Runbook-Agent/RunbookAI/commit/4a1b5bcf285b5988713a782ee1ead91c36027dff))
+
 ## [0.2.2](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.1...v0.2.2) (2026-02-12)
 
 
