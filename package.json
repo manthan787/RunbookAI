@@ -23,6 +23,9 @@
     "eval:all": "tsx src/eval/run-all-benchmarks.ts",
     "simulate:setup": "bash scripts/simulate/setup-incidents.sh",
     "simulate:cleanup": "bash scripts/simulate/cleanup-incidents.sh",
+    "release": "bash scripts/release/trigger-release.sh",
+    "release:dry-run": "bash scripts/release/trigger-release.sh --dry-run",
+    "release:skip-checks": "bash scripts/release/trigger-release.sh --skip-checks",
     "prepare": "husky"
   },
   "dependencies": {

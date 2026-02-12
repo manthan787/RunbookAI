@@ -435,6 +435,64 @@ bun run lint
 bun run format
 ```
 
+## Release Process
+
+This repository uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and GitHub releases.
+
+1. Merge regular PRs into `main`.
+2. `Release Please` workflow updates or opens a release PR with version bumps + changelog updates.
+3. Merge that release PR.
+4. Release Please creates a git tag (`vX.Y.Z`) and publishes a GitHub Release.
+5. Optional: npm publishing runs automatically for that release when enabled.
+
+### Workflows
+
+- `/.github/workflows/release-please.yml`
+  - Trigger: push to `main` (or manual dispatch)
+  - Responsibility: maintain release PR, create tags/releases after release PR merge
+- `/.github/workflows/publish-npm.yml`
+  - Trigger: GitHub Release published
+  - Responsibility: validate tag/version match, run checks, publish to npm
+
+### One-Command Release Trigger
+
+Use this local command to run release checks and trigger Release Please:
+
+```bash
+npm run release
+```
+
+Prerequisites:
+- `gh` CLI installed and authenticated (`gh auth login`)
+- Clean local working tree on `main`
+- Local `main` synced with `origin/main`
+
+Helper variants:
+- `npm run release:dry-run` to validate preconditions without triggering workflow
+- `npm run release:skip-checks` to bypass local checks (typecheck/lint/test/build)
+
+### npm Publish Setup (Optional)
+
+Use npm Trusted Publishing (OIDC), then enable publishing:
+- npm package settings: add this repository/workflow as a trusted publisher
+  - Provider: GitHub Actions
+  - Repository: `Runbook-Agent/RunbookAI`
+  - Workflow filename: `publish-npm.yml`
+- GitHub repo variable: `NPM_PUBLISH_ENABLED=true`
+
+Notes:
+- No npm token is required in GitHub secrets.
+- Publish is skipped unless `NPM_PUBLISH_ENABLED=true`.
+- The release tag must match `package.json` version.
+- Ensure package name/access are valid for npm before enabling publish (currently `@runbook-agent/runbook` in `package.json`).
+
+### Version Bump Rules
+
+Release Please uses Conventional Commits for semver bumping:
+- `fix:` -> patch
+- `feat:` -> minor
+- `feat!:` or `BREAKING CHANGE:` -> major
+
 ## What's New
 - Dynamic runtime skills now execute workflow steps with approval hooks.
 - Kubernetes tooling is available as a read-only query surface and can be gated with `providers.kubernetes.enabled`.
