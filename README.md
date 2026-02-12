@@ -504,6 +504,7 @@ Notes:
 - Publish is skipped unless `NPM_PUBLISH_ENABLED=true`.
 - The release tag must match `package.json` version.
 - Ensure package name/access are valid for npm before enabling publish (currently `@runbook-agent/runbook` in `package.json`).
+- If npm publish logs show `Access token expired or revoked`, remove `NODE_AUTH_TOKEN`/`NPM_TOKEN` secrets at org/repo/environment level so trusted publishing can use OIDC.
 
 ### Version Bump Rules
 
