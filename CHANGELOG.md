@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/Runbook-Agent/RunbookAI/compare/v0.3.0...v0.4.0) (2026-02-12)
+
+
+### Features
+
+* update homepage with demo command and simplified hero ([#56](https://github.com/Runbook-Agent/RunbookAI/issues/56)) ([b751f6c](https://github.com/Runbook-Agent/RunbookAI/commit/b751f6c2b29219274e1032e636d31a3a61e558dd))
+
+
+### Bug Fixes
+
+* add files field to include dist in npm publish ([#59](https://github.com/Runbook-Agent/RunbookAI/issues/59)) ([a497ed8](https://github.com/Runbook-Agent/RunbookAI/commit/a497ed858fc8c88d3e509752b80422648a0796e2))
+* remove duplicate demo command from hero ([#58](https://github.com/Runbook-Agent/RunbookAI/issues/58)) ([c1d1e77](https://github.com/Runbook-Agent/RunbookAI/commit/c1d1e77ad50eb72d0abcc14bcbbd0c903cc81029))
+
 ## [0.3.0](https://github.com/Runbook-Agent/RunbookAI/compare/v0.2.3...v0.3.0) (2026-02-12)
 
 

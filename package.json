@@ -1,6 +1,6 @@
 {
   "name": "@runbook-agent/runbook",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Agentic cloud operator and incident investigator",
   "type": "module",
   "main": "dist/cli.js",
