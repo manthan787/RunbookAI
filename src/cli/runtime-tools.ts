@@ -30,6 +30,12 @@ export async function getRuntimeTools(config: Config, tools: Tool[]): Promise<To
     if (!config.providers.kubernetes.enabled && tool.name === 'kubernetes_query') {
       return false;
     }
+    if (
+      !config.providers.operabilityContext.enabled &&
+      tool.name.startsWith('operability_context_')
+    ) {
+      return false;
+    }
     if (!config.providers.aws.enabled && AWS_TOOLS.has(tool.name)) {
       return false;
     }

@@ -304,6 +304,12 @@ providers:
     regions: [us-east-1, us-west-2]
   kubernetes:
     enabled: false
+  operabilityContext:
+    enabled: false
+    adapter: none
+    baseUrl: https://context.company.internal
+    apiKey: ${RUNBOOK_OPERABILITY_CONTEXT_API_KEY}
+    timeoutMs: 5000
 
 incident:
   pagerduty:
@@ -554,6 +560,9 @@ Release Please uses Conventional Commits for semver bumping:
 - Investigation evaluation now supports RCAEval, Rootly, and TraceRCA via a unified runner (`bun run eval:all`).
 - Incident simulation tooling uses generic scripts: `bun run simulate:setup` and `bun run simulate:cleanup`.
 - Claude Code integration includes context hooks, checkpoints, and MCP knowledge tools.
+- Operability context provider contract added for external context backends (Sourcegraph/checkpoints style): [docs/OPERABILITY_CONTEXT_PROVIDER.md](./docs/OPERABILITY_CONTEXT_PROVIDER.md).
+- Added operability ingestion commands with local spool replay (`runbook operability ingest|replay|status`) and automatic Claude hook forwarding.
+- Ingestion setup/runbook for teams: [docs/OPERABILITY_INGESTION.md](./docs/OPERABILITY_INGESTION.md).
 - Full implementation details: [docs/CHANGES_2026-02-08.md](./docs/CHANGES_2026-02-08.md) and [CODEX_PLAN.md](./CODEX_PLAN.md)
 
 ## License

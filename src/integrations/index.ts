@@ -37,3 +37,16 @@ export {
   type SessionState,
   type HookHandlerConfig,
 } from './hook-handlers';
+
+// Operability context ingestion
+export {
+  OperabilityContextIngestionClient,
+  buildClaimFromClaudeHookPayload,
+  buildSessionReferenceFromOptions,
+  createOperabilityContextIngestionClient,
+  type OperabilityHookPayload,
+  type OperabilityIngestionStage,
+  type OperabilityDispatchResult,
+  type OperabilityReplayResult,
+  type OperabilityQueueStatus,
+} from './operability-context-ingestion';

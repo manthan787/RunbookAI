@@ -41,6 +41,14 @@ import { runLearningLoopFromClaudeSession } from './learning/claude-session-inge
 import { handleHookStdinWithResponse } from './integrations/hook-handlers';
 import { createMCPServer, runStdioServer } from './mcp';
 import { createCheckpointStore, formatCheckpoint, formatCheckpointList } from './session';
+import {
+  buildClaimFromClaudeHookPayload,
+  buildSessionReferenceFromOptions,
+  createOperabilityContextIngestionClient,
+  type OperabilityIngestionStage,
+  type OperabilityHookPayload,
+} from './integrations/operability-context-ingestion';
+import type { AgentChangeClaim, AgentKind, ChangeRiskLevel } from './providers/operability-context';
 
 // Version from package.json
 const VERSION = '0.1.0';
@@ -977,6 +985,112 @@ async function runStructuredInvestigation(
   }
 }
 
+function parseCsvOption(value?: string): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function asAgentKind(value: string | undefined): AgentKind {
+  const candidate = (value || 'custom').trim().toLowerCase();
+  if (
+    candidate === 'claude' ||
+    candidate === 'codex' ||
+    candidate === 'cursor' ||
+    candidate === 'copilot' ||
+    candidate === 'cline' ||
+    candidate === 'custom'
+  ) {
+    return candidate;
+  }
+  throw new Error(`Invalid agent kind "${value}". Use claude|codex|cursor|copilot|cline|custom.`);
+}
+
+function asRiskLevel(value: string | undefined): ChangeRiskLevel | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const candidate = value.trim().toLowerCase();
+  if (
+    candidate === 'low' ||
+    candidate === 'medium' ||
+    candidate === 'high' ||
+    candidate === 'critical'
+  ) {
+    return candidate;
+  }
+  throw new Error(`Invalid risk level "${value}". Use low|medium|high|critical.`);
+}
+
+function parseMetadataJson(value: string | undefined): Record<string, unknown> | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('--metadata must be a JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
+interface OperabilityIngestCommandOptions {
+  sessionId: string;
+  agent?: string;
+  repository?: string;
+  branch?: string;
+  baseSha?: string;
+  headSha?: string;
+  actor?: string;
+  startedAt?: string;
+  capturedAt?: string;
+  checkpointId?: string;
+  intent?: string;
+  files?: string;
+  services?: string;
+  tests?: string;
+  unknowns?: string;
+  risk?: string;
+  rolloutPlan?: string;
+  rollbackPlan?: string;
+  metadata?: string;
+  strict?: boolean;
+}
+
+async function buildClaimFromCommandOptions(
+  options: OperabilityIngestCommandOptions
+): Promise<AgentChangeClaim> {
+  const session = await buildSessionReferenceFromOptions({
+    sessionId: options.sessionId,
+    agent: asAgentKind(options.agent),
+    repository: options.repository,
+    branch: options.branch,
+    baseSha: options.baseSha,
+    headSha: options.headSha,
+    actor: options.actor,
+    startedAt: options.startedAt,
+    cwd: process.cwd(),
+  });
+
+  return {
+    session,
+    capturedAt: options.capturedAt || new Date().toISOString(),
+    checkpointId: options.checkpointId,
+    intentSummary: options.intent,
+    filesTouchedClaimed: parseCsvOption(options.files),
+    servicesClaimed: parseCsvOption(options.services),
+    riskClaimed: asRiskLevel(options.risk),
+    rolloutPlanClaimed: options.rolloutPlan,
+    rollbackPlanClaimed: options.rollbackPlan,
+    testsRunClaimed: parseCsvOption(options.tests),
+    unknowns: parseCsvOption(options.unknowns),
+    metadata: parseMetadataJson(options.metadata),
+  };
+}
+
 // CLI Program
 program
   .name('runbook')
@@ -1789,8 +1903,21 @@ claudeIntegration
 
     // Set up storage backend
     let storage: ReturnType<typeof createClaudeSessionStorageFromConfig> | undefined;
+    let loadedConfig: Awaited<ReturnType<typeof loadConfig>> | null = null;
+    let hookPayload: OperabilityHookPayload | null = null;
+
+    try {
+      const parsed = JSON.parse(input) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        hookPayload = parsed as OperabilityHookPayload;
+      }
+    } catch {
+      // Ignore parse errors here; handleClaudeHookStdin will report invalid payloads.
+    }
+
     try {
       const config = await loadConfig();
+      loadedConfig = config;
       storage = createClaudeSessionStorageFromConfig(config, {
         projectDir: options.projectDir || process.cwd(),
       });
@@ -1815,6 +1942,38 @@ claudeIntegration
         : persistResult.reason;
       console.error(chalk.yellow(`[runbook] Claude hook callback ignored (${message})`));
       return;
+    }
+
+    if (loadedConfig && hookPayload) {
+      try {
+        const client = createOperabilityContextIngestionClient(loadedConfig, {
+          projectDir: options.projectDir || process.cwd(),
+        });
+        if (client.isEnabled()) {
+          const mapped = await buildClaimFromClaudeHookPayload({
+            payload: hookPayload,
+            sessionAgent: 'claude',
+            cwd: options.projectDir || process.cwd(),
+          });
+
+          if (mapped) {
+            const ingestion = await client.ingest(mapped.stage, mapped.claim);
+            if (ingestion.status === 'queued') {
+              console.error(
+                chalk.yellow(
+                  `[runbook] Operability ingestion queued (${mapped.stage}): ${ingestion.error || 'dispatch failed'}`
+                )
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          chalk.yellow(
+            `[runbook] Operability ingestion skipped (${error instanceof Error ? error.message : String(error)})`
+          )
+        );
+      }
     }
 
     // If context injection is enabled (default), process and return response
@@ -2041,6 +2200,150 @@ mcp
       console.log(chalk.gray(`    ${tool.description}\n`));
     }
     server.close();
+  });
+
+// Operability ingestion commands
+const operability = program
+  .command('operability')
+  .description('Manage operability context ingestion and local spool replay');
+const operabilityIngest = operability
+  .command('ingest')
+  .description('Send structured change session claims to operability context provider');
+
+function registerOperabilityIngestCommand(stage: OperabilityIngestionStage) {
+  operabilityIngest
+    .command(stage)
+    .description(`Send ${stage} event for a coding session`)
+    .requiredOption('--session-id <id>', 'Session identifier from the coding agent')
+    .option('--agent <agent>', 'Agent kind: claude|codex|cursor|copilot|cline|custom', 'custom')
+    .option('--repository <name>', 'Repository name (defaults from git root)')
+    .option('--branch <name>', 'Branch name (defaults from git)')
+    .option('--base-sha <sha>', 'Base commit SHA (defaults from git HEAD~1)')
+    .option('--head-sha <sha>', 'Head commit SHA (defaults from git HEAD)')
+    .option('--actor <name>', 'User/automation actor')
+    .option('--started-at <iso>', 'Session start timestamp (ISO-8601)')
+    .option('--captured-at <iso>', 'Claim capture timestamp (ISO-8601)')
+    .option('--checkpoint-id <id>', 'Checkpoint identifier')
+    .option('--intent <text>', 'Intent summary')
+    .option('--files <csv>', 'Comma-separated claimed changed files')
+    .option('--services <csv>', 'Comma-separated claimed impacted services')
+    .option('--tests <csv>', 'Comma-separated claimed tests run')
+    .option('--unknowns <csv>', 'Comma-separated unknowns/open questions')
+    .option('--risk <level>', 'Claimed risk level: low|medium|high|critical')
+    .option('--rollout-plan <text>', 'Claimed rollout plan text')
+    .option('--rollback-plan <text>', 'Claimed rollback plan text')
+    .option('--metadata <json>', 'JSON metadata object')
+    .option('--strict', 'Fail instead of queueing locally when dispatch fails')
+    .action(async (options: OperabilityIngestCommandOptions) => {
+      try {
+        const config = await loadConfig();
+        const client = createOperabilityContextIngestionClient(config, {
+          projectDir: process.cwd(),
+        });
+        const claim = await buildClaimFromCommandOptions(options);
+        const result = await client.ingest(stage, claim, { strict: options.strict || false });
+
+        if (result.status === 'sent') {
+          console.log(chalk.green(`Operability ${stage} event sent.`));
+          if (result.endpoint) {
+            console.log(chalk.gray(`Endpoint: ${result.endpoint}`));
+          }
+          return;
+        }
+
+        if (result.status === 'queued') {
+          console.log(chalk.yellow(`Operability ${stage} event queued locally.`));
+          if (result.error) {
+            console.log(chalk.gray(`Reason: ${result.error}`));
+          }
+          if (result.queueFile) {
+            console.log(chalk.gray(`Queue file: ${result.queueFile}`));
+          }
+          process.exitCode = 2;
+          return;
+        }
+
+        console.log(
+          chalk.yellow(`Operability ${stage} event skipped: ${result.error || 'disabled'}`)
+        );
+      } catch (error) {
+        console.error(
+          chalk.red(
+            `Failed to send operability ${stage} event: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
+        process.exit(1);
+      }
+    });
+}
+
+registerOperabilityIngestCommand('start');
+registerOperabilityIngestCommand('checkpoint');
+registerOperabilityIngestCommand('end');
+
+operability
+  .command('replay')
+  .description('Replay locally queued operability ingestion events')
+  .option('--limit <n>', 'Maximum queued events to replay', (value) => parseInt(value, 10))
+  .option('--strict', 'Stop replay on first failure')
+  .action(async (options: { limit?: number; strict?: boolean }) => {
+    try {
+      const config = await loadConfig();
+      const client = createOperabilityContextIngestionClient(config, { projectDir: process.cwd() });
+      const replay = await client.replaySpool({
+        limit: Number.isFinite(options.limit || NaN) ? options.limit : undefined,
+        strict: options.strict || false,
+      });
+
+      console.log(chalk.cyan('Operability replay result'));
+      console.log(chalk.gray(`Processed: ${replay.processed}`));
+      console.log(chalk.gray(`Sent: ${replay.sent}`));
+      console.log(chalk.gray(`Failed: ${replay.failed}`));
+      console.log(chalk.gray(`Remaining: ${replay.remaining}`));
+      if (replay.failed > 0) {
+        process.exitCode = 2;
+      }
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `Operability replay failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+      process.exit(1);
+    }
+  });
+
+operability
+  .command('status')
+  .description('Show operability provider/spool status')
+  .action(async () => {
+    try {
+      const config = await loadConfig();
+      const client = createOperabilityContextIngestionClient(config, { projectDir: process.cwd() });
+      const status = await client.getQueueStatus();
+
+      console.log(chalk.cyan('Operability Context'));
+      console.log(chalk.gray(`Enabled: ${status.enabled ? 'yes' : 'no'}`));
+      console.log(chalk.gray(`Adapter: ${config.providers.operabilityContext.adapter}`));
+      console.log(
+        chalk.gray(
+          `Base URL: ${
+            config.providers.operabilityContext.baseUrl ||
+            process.env.RUNBOOK_OPERABILITY_CONTEXT_URL ||
+            'not configured'
+          }`
+        )
+      );
+      console.log(chalk.gray(`Queued events: ${status.pending}`));
+      console.log(chalk.gray(`Spool directory: ${status.spoolDir}`));
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `Failed to load operability status: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+      process.exit(1);
+    }
   });
 
 // Checkpoint commands
