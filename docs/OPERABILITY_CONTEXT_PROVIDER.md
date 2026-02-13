@@ -15,6 +15,8 @@ Implementation types live in:
 - `src/providers/operability-context/types.ts`
 - `src/providers/operability-context/registry.ts`
 - `src/providers/operability-context/reconcile.ts`
+- `src/providers/operability-context/adapters/`
+- `src/providers/operability-context/factory.ts`
 
 Provider shape:
 
@@ -104,6 +106,20 @@ Validation rules:
 1. Start with 1 provider (for example Sourcegraph) + PR webhook fallback.
 2. Add checkpoint/session provider as second adapter.
 3. Compare confidence and claim-fact deltas before enabling hard CI gating.
+
+## Built-in Adapter Implementations
+
+Runbook includes HTTP-backed adapters:
+
+1. `sourcegraph`
+2. `entireio`
+3. `runbook_context`
+4. `custom`
+
+Factory helpers:
+
+1. `createOperabilityContextProviderFromConfig`
+2. `createOperabilityContextRegistryFromConfig`
 
 ## Ingestion Modes in RunbookAI
 

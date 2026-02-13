@@ -562,6 +562,7 @@ Release Please uses Conventional Commits for semver bumping:
 - Claude Code integration includes context hooks, checkpoints, and MCP knowledge tools.
 - Operability context provider contract added for external context backends (Sourcegraph/checkpoints style): [docs/OPERABILITY_CONTEXT_PROVIDER.md](./docs/OPERABILITY_CONTEXT_PROVIDER.md).
 - Added operability ingestion commands with local spool replay (`runbook operability ingest|replay|status`) and automatic Claude hook forwarding.
+- Added built-in operability context adapters (`sourcegraph`, `entireio`, `runbook_context`, `custom`) with config-based provider factory wiring.
 - Ingestion setup/runbook for teams: [docs/OPERABILITY_INGESTION.md](./docs/OPERABILITY_INGESTION.md).
 - Full implementation details: [docs/CHANGES_2026-02-08.md](./docs/CHANGES_2026-02-08.md) and [CODEX_PLAN.md](./CODEX_PLAN.md)
 
