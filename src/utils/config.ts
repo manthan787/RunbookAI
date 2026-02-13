@@ -49,7 +49,7 @@ const KubernetesConfigSchema = z.object({
 
 const OperabilityContextConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  adapter: z.enum(['none', 'sourcegraph', 'entireio', 'runbook_context', 'custom']).default('none'),
+  adapter: z.enum(['none', 'sourcegraph', 'entireio', 'custom']).default('none'),
   baseUrl: z.string().optional(),
   apiKey: z.string().optional(),
   timeoutMs: z.number().int().min(250).max(120000).default(5000),
@@ -319,7 +319,7 @@ export function validateConfig(config: Config): string[] {
 
     if (adapter === 'none') {
       errors.push(
-        'Operability Context is enabled but adapter is "none". Choose sourcegraph, entireio, runbook_context, or custom.'
+        'Operability Context is enabled but adapter is "none". Choose sourcegraph, entireio, or custom.'
       );
     }
 

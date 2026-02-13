@@ -16,7 +16,7 @@ Set `.runbook/config.yaml`:
 providers:
   operabilityContext:
     enabled: true
-    adapter: sourcegraph # none | sourcegraph | entireio | runbook_context | custom
+    adapter: sourcegraph # none | sourcegraph | entireio | custom
     baseUrl: https://context.company.internal
     apiKey: ${RUNBOOK_OPERABILITY_CONTEXT_API_KEY}
     timeoutMs: 5000
