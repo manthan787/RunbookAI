@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/Runbook-Agent/RunbookAI/compare/v0.4.1...v0.5.0) (2026-02-13)
+
+
+### Features
+
+* add asciinema demo recording to website and README ([#68](https://github.com/Runbook-Agent/RunbookAI/issues/68)) ([bab183b](https://github.com/Runbook-Agent/RunbookAI/commit/bab183bec6c67c73a34dc26dc273e958a52529c0))
+* add github and gitlab code-fix pointers for investigations ([#69](https://github.com/Runbook-Agent/RunbookAI/issues/69)) ([9b905e3](https://github.com/Runbook-Agent/RunbookAI/commit/9b905e30d18387e0257cd7a8ed66c341e87463be))
+* add operability context adapter implementations ([#66](https://github.com/Runbook-Agent/RunbookAI/issues/66)) ([0fdf700](https://github.com/Runbook-Agent/RunbookAI/commit/0fdf70041c8110d1722589ecee999b5fa4429118))
+* add operability context ingestion flow ([#64](https://github.com/Runbook-Agent/RunbookAI/issues/64)) ([d343a95](https://github.com/Runbook-Agent/RunbookAI/commit/d343a952286bc36a153ebdd65fb2c5f22c1870ac))
+
+
+### Bug Fixes
+
+* convert demo.cast timestamps from relative to absolute ([#72](https://github.com/Runbook-Agent/RunbookAI/issues/72)) ([b454070](https://github.com/Runbook-Agent/RunbookAI/commit/b454070ac3a1889cf247f4e192e7d3cc467c4a49))
+* convert demo.cast to v2 format and add GIF to README ([#71](https://github.com/Runbook-Agent/RunbookAI/issues/71)) ([6cdae65](https://github.com/Runbook-Agent/RunbookAI/commit/6cdae6520346c9ff8ae14f032a1b70c67a256414))
+* restore runbook_context adapter type in config enum ([#70](https://github.com/Runbook-Agent/RunbookAI/issues/70)) ([b209f63](https://github.com/Runbook-Agent/RunbookAI/commit/b209f63c351af53985deab356d22309346a4536d))
+
 ## [0.4.1](https://github.com/Runbook-Agent/RunbookAI/compare/v0.4.0...v0.4.1) (2026-02-12)
 
 
