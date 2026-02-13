@@ -37,6 +37,32 @@ Or add to your Claude Code MCP configuration to auto-start.
 
 When hooks are enabled, RunbookAI automatically provides relevant context to Claude based on your conversation.
 
+## Operability Context Forwarding
+
+When `providers.operabilityContext.enabled` is true, Claude hook events are also forwarded as structured change-session ingestion events:
+
+- `SessionStart` -> `start`
+- `UserPromptSubmit` / `PreToolUse` / `PostToolUse` -> `checkpoint`
+- `Stop` / `SubagentStop` -> `end`
+
+Dispatch target:
+
+- `POST /v1/ingest/change-session/<stage>`
+
+If dispatch fails, events are queued locally at:
+
+- `.runbook/operability-context/spool/`
+
+You can replay queued events with:
+
+```bash
+runbook operability replay
+```
+
+For full setup and command reference, see:
+
+- [docs/OPERABILITY_INGESTION.md](./OPERABILITY_INGESTION.md)
+
 ### How It Works
 
 1. **SessionStart**: When Claude starts a new session, RunbookAI links it and shows available knowledge stats

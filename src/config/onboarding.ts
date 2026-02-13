@@ -170,6 +170,10 @@ export async function saveConfig(
       kubernetes: {
         enabled: kubernetesEnabled,
       },
+      operabilityContext: {
+        enabled: false,
+        adapter: 'none',
+      },
     },
     incident: {
       pagerduty: {

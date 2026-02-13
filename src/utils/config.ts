@@ -47,6 +47,15 @@ const KubernetesConfigSchema = z.object({
   kubeconfig: z.string().optional(),
 });
 
+const OperabilityContextConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  adapter: z.enum(['none', 'sourcegraph', 'entireio', 'runbook_context', 'custom']).default('none'),
+  baseUrl: z.string().optional(),
+  apiKey: z.string().optional(),
+  timeoutMs: z.number().int().min(250).max(120000).default(5000),
+  requestHeaders: z.record(z.string()).default({}),
+});
+
 const PagerDutyConfigSchema = z.object({
   enabled: z.boolean().default(false),
   apiKey: z.string().optional(),
@@ -171,6 +180,7 @@ const ConfigSchema = z.object({
     .object({
       aws: AWSConfigSchema.default({}),
       kubernetes: KubernetesConfigSchema.default({}),
+      operabilityContext: OperabilityContextConfigSchema.default({}),
     })
     .default({}),
   incident: IncidentConfigSchema.default({}),
@@ -297,6 +307,33 @@ export function validateConfig(config: Config): string[] {
   // Check PagerDuty if enabled
   if (config.incident.pagerduty.enabled && !config.incident.pagerduty.apiKey) {
     errors.push('PagerDuty enabled but no API key configured.');
+  }
+
+  // Check Operability Context provider wiring if enabled
+  if (config.providers.operabilityContext.enabled) {
+    const adapter = config.providers.operabilityContext.adapter;
+    const baseUrl =
+      config.providers.operabilityContext.baseUrl || process.env.RUNBOOK_OPERABILITY_CONTEXT_URL;
+    const apiKey =
+      config.providers.operabilityContext.apiKey || process.env.RUNBOOK_OPERABILITY_CONTEXT_API_KEY;
+
+    if (adapter === 'none') {
+      errors.push(
+        'Operability Context is enabled but adapter is "none". Choose sourcegraph, entireio, runbook_context, or custom.'
+      );
+    }
+
+    if (!baseUrl) {
+      errors.push(
+        'Operability Context is enabled but no base URL configured. Set providers.operabilityContext.baseUrl or RUNBOOK_OPERABILITY_CONTEXT_URL.'
+      );
+    }
+
+    if (adapter !== 'custom' && !apiKey) {
+      errors.push(
+        'Operability Context is enabled but no API key configured. Set providers.operabilityContext.apiKey or RUNBOOK_OPERABILITY_CONTEXT_API_KEY.'
+      );
+    }
   }
 
   // Check OpsGenie if enabled
