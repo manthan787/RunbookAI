@@ -503,6 +503,14 @@ body {
   margin-right: auto;
 }
 
+/* Asciinema Player Override */
+.hero-terminal .ap-wrapper {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xl);
+}
+
 .terminal {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);

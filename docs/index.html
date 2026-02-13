@@ -22,6 +22,7 @@
 
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/asciinema-player@3.9.0/dist/bundle/asciinema-player.css" />
   </head>
   <body>
     <!-- Background Effects -->
@@ -150,91 +151,7 @@
 
         <!-- Terminal Demo -->
         <div class="hero-terminal" id="demo">
-          <div class="terminal">
-            <div class="terminal-header">
-              <div class="terminal-dots">
-                <span class="terminal-dot terminal-dot-red"></span>
-                <span class="terminal-dot terminal-dot-yellow"></span>
-                <span class="terminal-dot terminal-dot-green"></span>
-              </div>
-              <span class="terminal-title">runbook investigate PD-12345</span>
-              <button class="terminal-copy" data-copy="runbook investigate PD-12345" onclick="copyToClipboard(this)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                </svg>
-              </button>
-            </div>
-            <div class="terminal-body">
-              <div class="terminal-line">
-                <span class="terminal-prompt">$</span>
-                <span class="terminal-command">runbook investigate PD-12345</span>
-              </div>
-              <div class="terminal-output">
-                <div class="terminal-line terminal-animate" style="--delay: 0.5s">
-                  <span class="terminal-success">&#10003;</span> Gathering incident context from PagerDuty...
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 1s">
-                  <span class="terminal-success">&#10003;</span> Searching knowledge base for similar incidents...
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 1.5s">
-                  <span class="terminal-success">&#10003;</span> Found 3 relevant runbooks
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 2s">
-                  <span class="terminal-label">Forming hypotheses:</span>
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.3s">
-                  <span class="terminal-hypothesis">H1:</span> Database connection pool exhaustion
-                  <span class="terminal-confidence">(0.72)</span>
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.5s">
-                  <span class="terminal-hypothesis">H2:</span> Recent deployment memory leak
-                  <span class="terminal-confidence">(0.54)</span>
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 2.7s">
-                  <span class="terminal-hypothesis">H3:</span> Upstream API timeout cascade
-                  <span class="terminal-confidence">(0.31)</span>
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 3.2s">
-                  <span class="terminal-info">&#9654;</span> Testing H1: Querying CloudWatch metrics...
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 3.7s">
-                  <span class="terminal-evidence">Evidence:</span>
-                  <span class="terminal-strong">STRONG</span> - Connection count 340% above baseline
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 4.2s">
-                  <span class="terminal-info">&#9654;</span> Branching deeper on H1...
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 4.7s">
-                  <span class="terminal-evidence">Evidence:</span>
-                  <span class="terminal-strong">STRONG</span> - Traffic spike at 14:32 UTC
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 5.2s">
-                  <span class="terminal-rootcause">ROOT CAUSE IDENTIFIED</span>
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 5.5s">
-                  <span class="terminal-white">Database connection exhaustion due to unexpected traffic spike</span>
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 5.8s">
-                  <span class="terminal-label">Confidence:</span>
-                  <span class="terminal-high">HIGH (0.94)</span>
-                </div>
-                <div class="terminal-line terminal-animate" style="--delay: 6.1s">
-                  <span class="terminal-label">Suggested remediation:</span>
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.4s">
-                  <span class="terminal-remediation">1.</span> Scale RDS read replicas
-                  <span class="terminal-approval">(requires approval)</span>
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.6s">
-                  <span class="terminal-remediation">2.</span> Increase connection pool limit to 200
-                </div>
-                <div class="terminal-line terminal-indent terminal-animate" style="--delay: 6.8s">
-                  <span class="terminal-remediation">3.</span> Enable connection queuing in pgbouncer
-                </div>
-              </div>
-            </div>
-          </div>
+          <div id="demo-player"></div>
         </div>
       </div>
     </header>
@@ -857,5 +774,17 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="https://unpkg.com/asciinema-player@3.9.0/dist/bundle/asciinema-player.min.js"></script>
+    <script>
+      AsciinemaPlayer.create('assets/demo.cast', document.getElementById('demo-player'), {
+        theme: 'dracula',
+        autoPlay: true,
+        loop: true,
+        speed: 1.5,
+        fit: 'width',
+        terminalFontFamily: "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace",
+        idleTimeLimit: 2,
+      });
+    </script>
   </body>
 </html>

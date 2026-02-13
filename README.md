@@ -28,6 +28,11 @@ npx @runbook-agent/runbook demo
 
 Watch the agent investigate a simulated incident—forming hypotheses, gathering evidence, and identifying root cause—all in your terminal.
 
+[Watch the live demo on our website](https://userunbook.ai/#demo)
+
+<details>
+<summary>Text preview</summary>
+
 ```text
 ⚠  INCIDENT ALERT
    ID: DEMO-001
@@ -49,6 +54,8 @@ Watch the agent investigate a simulated incident—forming hypotheses, gathering
   Redis connection pool exhaustion due to traffic spike
   Confidence: 94%
 ```
+
+</details>
 
 Use `--fast` for a quicker demo: `npx @runbook-agent/runbook demo --fast`
 
