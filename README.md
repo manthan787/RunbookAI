@@ -112,6 +112,7 @@ bun run dev investigate PD-12345
 - Runtime skill execution with approval-aware workflow steps.
 - Dynamic skill and knowledge wiring at runtime.
 - Incident integrations for PagerDuty and OpsGenie.
+- Optional GitHub/GitLab code-fix candidate retrieval during remediation planning.
 - Claude Code integration with context injection and safety hooks.
 - MCP server exposing searchable operational knowledge.
 
@@ -304,6 +305,18 @@ providers:
     regions: [us-east-1, us-west-2]
   kubernetes:
     enabled: false
+  github:
+    enabled: false
+    repository: acme/platform # owner/repo
+    token: ${GITHUB_TOKEN}
+    baseUrl: https://api.github.com
+    timeoutMs: 5000
+  gitlab:
+    enabled: false
+    project: acme/platform # path or numeric project ID
+    token: ${GITLAB_TOKEN}
+    baseUrl: https://gitlab.com/api/v4
+    timeoutMs: 5000
   operabilityContext:
     enabled: false
     adapter: none

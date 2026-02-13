@@ -623,6 +623,68 @@ describe('InvestigationOrchestrator', () => {
       expect(remediationPrompt).toContain('- DB Connection Recovery');
       expect(remediationPrompt).toContain('- API Latency Playbook');
     });
+
+    it('should query code providers and include code-fix candidates in remediation prompt context', async () => {
+      let callIndex = 0;
+      const complete = vi.fn().mockImplementation(async () => {
+        callIndex++;
+        if (callIndex === 1) return mockTriageResponse;
+        if (callIndex === 2) return mockHypothesisResponse;
+        if (callIndex === 3) return mockEvidenceEvaluationConfirm;
+        if (callIndex === 4) return mockConclusionResponse;
+        if (callIndex === 5) return mockRemediationResponse;
+        return mockEvidenceEvaluationPrune;
+      });
+      const llm: LLMClient = { complete };
+
+      const execute = vi.fn().mockImplementation(async (tool: string) => {
+        if (tool === 'cloudwatch_alarms') return [{ alarmName: 'HighLatency', state: 'ALARM' }];
+        if (tool === 'cloudwatch_logs') return [{ message: 'Connection timeout after 30s' }];
+        if (tool === 'datadog') return { metrics: { cpu: 45, memory: 80 } };
+        if (tool === 'aws_query') return { services: ['api-gateway'], status: 'running' };
+        if (tool === 'github_query') {
+          return {
+            provider: 'github',
+            query: 'database connection pool exhausted',
+            repository: 'acme/platform',
+            candidates: [
+              {
+                provider: 'github',
+                type: 'pull_request',
+                title: 'Fix DB connection leak in checkout worker',
+                url: 'https://github.com/acme/platform/pull/42',
+              },
+            ],
+          };
+        }
+        return { success: true };
+      });
+      const toolExecutor: ToolExecutor = { execute };
+
+      const orchestrator = createOrchestrator(llm, toolExecutor, {
+        availableTools: ['cloudwatch_alarms', 'cloudwatch_logs', 'aws_query', 'github_query'],
+      });
+
+      await orchestrator.investigate('Investigate incident');
+
+      expect(execute).toHaveBeenCalledWith(
+        'github_query',
+        expect.objectContaining({
+          action: 'fix_candidates',
+        })
+      );
+
+      const remediationPromptCall = complete.mock.calls.find(
+        (call) =>
+          typeof call[0] === 'string' &&
+          call[0].includes('Generate a remediation plan for the identified root cause')
+      );
+      expect(remediationPromptCall).toBeDefined();
+
+      const remediationPrompt = remediationPromptCall?.[0] as string;
+      expect(remediationPrompt).toContain('Available Code Fix Candidates');
+      expect(remediationPrompt).toContain('https://github.com/acme/platform/pull/42');
+    });
   });
 
   describe('log analysis', () => {

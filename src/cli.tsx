@@ -919,6 +919,9 @@ async function runStructuredInvestigation(
       if (step.rollbackCommand) {
         console.log(chalk.gray(`     Rollback: ${step.rollbackCommand}`));
       }
+      if (step.codeReference) {
+        console.log(chalk.gray(`     Code: ${step.codeReference}`));
+      }
       if (step.error) {
         console.log(chalk.yellow(`     Status: ${step.status} (${step.error})`));
       } else if (step.status && step.status !== 'pending') {

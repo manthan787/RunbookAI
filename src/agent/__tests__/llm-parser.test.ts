@@ -327,6 +327,7 @@ describe('parseRemediationPlan', () => {
           "description": "Force new deployment to clear connection pool",
           "command": "aws ecs update-service --force-new-deployment",
           "rollbackCommand": "aws ecs update-service --desired-count 0",
+          "codeReference": "https://github.com/acme/platform/pull/123",
           "riskLevel": "medium",
           "requiresApproval": true,
           "matchingSkill": "deploy-service"
@@ -341,6 +342,7 @@ describe('parseRemediationPlan', () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].riskLevel).toBe('medium');
     expect(result.steps[0].requiresApproval).toBe(true);
+    expect(result.steps[0].codeReference).toBe('https://github.com/acme/platform/pull/123');
     expect(result.estimatedRecoveryTime).toBe('5 minutes');
     expect(result.monitoring).toHaveLength(2);
   });
@@ -353,6 +355,7 @@ describe('parseRemediationPlan', () => {
           "description": "Increase replicas",
           "command": null,
           "rollbackCommand": null,
+          "codeReference": null,
           "riskLevel": "low",
           "requiresApproval": false,
           "matchingSkill": null,
@@ -366,6 +369,7 @@ describe('parseRemediationPlan', () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].command).toBeUndefined();
     expect(result.steps[0].rollbackCommand).toBeUndefined();
+    expect(result.steps[0].codeReference).toBeUndefined();
     expect(result.steps[0].matchingSkill).toBeUndefined();
     expect(result.steps[0].matchingRunbook).toBeUndefined();
   });
@@ -490,6 +494,7 @@ describe('toRemediationSteps', () => {
         {
           action: 'Restart service',
           description: 'Restart the service',
+          codeReference: 'https://github.com/acme/platform/pull/77',
           riskLevel: 'medium' as const,
           requiresApproval: true,
         },
@@ -508,6 +513,7 @@ describe('toRemediationSteps', () => {
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('step_1');
     expect(result[0].status).toBe('pending');
+    expect(result[0].codeReference).toBe('https://github.com/acme/platform/pull/77');
     expect(result[1].id).toBe('step_2');
   });
 });

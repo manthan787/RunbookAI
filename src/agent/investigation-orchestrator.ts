@@ -548,6 +548,85 @@ export class InvestigationOrchestrator {
     }
   }
 
+  private async resolveCodeFixCandidates(
+    rootCause: string,
+    affectedServices: string[]
+  ): Promise<string[]> {
+    const query = [rootCause, ...affectedServices].join(' ').trim();
+    if (!query) {
+      return [];
+    }
+
+    const tools: string[] = [];
+    if (this.isToolAvailable('github_query')) {
+      tools.push('github_query');
+    }
+    if (this.isToolAvailable('gitlab_query')) {
+      tools.push('gitlab_query');
+    }
+    if (tools.length === 0) {
+      return [];
+    }
+
+    const deduped = new Set<string>();
+    const formatted: string[] = [];
+
+    for (const toolName of tools) {
+      try {
+        const result = await this.toolExecutor.execute(toolName, {
+          action: 'fix_candidates',
+          query,
+          services: affectedServices.slice(0, 6),
+          limit: 8,
+        });
+
+        if (!result || typeof result !== 'object') {
+          continue;
+        }
+
+        const obj = result as Record<string, unknown>;
+        if (obj.error) {
+          continue;
+        }
+
+        const candidates = Array.isArray(obj.candidates) ? obj.candidates : [];
+        for (const candidate of candidates) {
+          if (!candidate || typeof candidate !== 'object') {
+            continue;
+          }
+
+          const item = candidate as Record<string, unknown>;
+          const url = typeof item.url === 'string' ? item.url.trim() : '';
+          if (!url || deduped.has(url)) {
+            continue;
+          }
+
+          deduped.add(url);
+
+          const provider =
+            typeof item.provider === 'string'
+              ? item.provider.trim()
+              : toolName === 'github_query'
+                ? 'github'
+                : 'gitlab';
+          const type = typeof item.type === 'string' ? item.type.replace(/_/g, ' ').trim() : 'code';
+          const title = typeof item.title === 'string' ? item.title.trim() : url;
+          const path =
+            typeof item.path === 'string' && item.path.trim() ? ` (${item.path.trim()})` : '';
+
+          formatted.push(`[${provider}] ${type}: ${title}${path} -> ${url}`);
+          if (formatted.length >= 12) {
+            return formatted;
+          }
+        }
+      } catch {
+        // Keep remediation flow resilient when code providers are unavailable.
+      }
+    }
+
+    return formatted;
+  }
+
   /**
    * Run a full investigation
    */
@@ -1031,12 +1110,17 @@ export class InvestigationOrchestrator {
       rootCause: conclusion.rootCause,
       affectedServices: triage?.affectedServices || [],
     });
+    const codeFixCandidates = await this.resolveCodeFixCandidates(
+      conclusion.rootCause,
+      triage?.affectedServices || []
+    );
 
     const prompt = fillPrompt(PROMPTS.generateRemediation, {
       rootCause: conclusion.rootCause,
       services: triage?.affectedServices.join(', ') || 'Unknown',
       skills: this.formatPromptList(availableSkills, 'No skills available'),
       runbooks: this.formatPromptList(relevantRunbooks, 'None found'),
+      codeFixes: this.formatPromptList(codeFixCandidates, 'None found'),
     });
 
     const response = await this.llm.complete(prompt);

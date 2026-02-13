@@ -47,6 +47,22 @@ const KubernetesConfigSchema = z.object({
   kubeconfig: z.string().optional(),
 });
 
+const GitHubConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  token: z.string().optional(),
+  repository: z.string().optional(),
+  baseUrl: z.string().default('https://api.github.com'),
+  timeoutMs: z.number().int().min(250).max(120000).default(5000),
+});
+
+const GitLabConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  token: z.string().optional(),
+  project: z.string().optional(),
+  baseUrl: z.string().default('https://gitlab.com/api/v4'),
+  timeoutMs: z.number().int().min(250).max(120000).default(5000),
+});
+
 const OperabilityContextConfigSchema = z.object({
   enabled: z.boolean().default(false),
   adapter: z.enum(['none', 'sourcegraph', 'entireio', 'runbook_context', 'custom']).default('none'),
@@ -180,6 +196,8 @@ const ConfigSchema = z.object({
     .object({
       aws: AWSConfigSchema.default({}),
       kubernetes: KubernetesConfigSchema.default({}),
+      github: GitHubConfigSchema.default({}),
+      gitlab: GitLabConfigSchema.default({}),
       operabilityContext: OperabilityContextConfigSchema.default({}),
     })
     .default({}),
@@ -332,6 +350,40 @@ export function validateConfig(config: Config): string[] {
     if (adapter !== 'custom' && !apiKey) {
       errors.push(
         'Operability Context is enabled but no API key configured. Set providers.operabilityContext.apiKey or RUNBOOK_OPERABILITY_CONTEXT_API_KEY.'
+      );
+    }
+  }
+
+  if (config.providers.github.enabled) {
+    const token =
+      config.providers.github.token || process.env.RUNBOOK_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
+    const repository = config.providers.github.repository || process.env.RUNBOOK_GITHUB_REPOSITORY;
+
+    if (!token) {
+      errors.push(
+        'GitHub provider is enabled but no token is configured. Set providers.github.token, RUNBOOK_GITHUB_TOKEN, or GITHUB_TOKEN.'
+      );
+    }
+    if (!repository) {
+      errors.push(
+        'GitHub provider is enabled but no repository is configured. Set providers.github.repository (owner/repo) or RUNBOOK_GITHUB_REPOSITORY.'
+      );
+    }
+  }
+
+  if (config.providers.gitlab.enabled) {
+    const token =
+      config.providers.gitlab.token || process.env.RUNBOOK_GITLAB_TOKEN || process.env.GITLAB_TOKEN;
+    const project = config.providers.gitlab.project || process.env.RUNBOOK_GITLAB_PROJECT;
+
+    if (!token) {
+      errors.push(
+        'GitLab provider is enabled but no token is configured. Set providers.gitlab.token, RUNBOOK_GITLAB_TOKEN, or GITLAB_TOKEN.'
+      );
+    }
+    if (!project) {
+      errors.push(
+        'GitLab provider is enabled but no project is configured. Set providers.gitlab.project (project ID or full path) or RUNBOOK_GITLAB_PROJECT.'
       );
     }
   }

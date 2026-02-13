@@ -30,6 +30,12 @@ export async function getRuntimeTools(config: Config, tools: Tool[]): Promise<To
     if (!config.providers.kubernetes.enabled && tool.name === 'kubernetes_query') {
       return false;
     }
+    if (!config.providers.github.enabled && tool.name === 'github_query') {
+      return false;
+    }
+    if (!config.providers.gitlab.enabled && tool.name === 'gitlab_query') {
+      return false;
+    }
     if (
       !config.providers.operabilityContext.enabled &&
       tool.name.startsWith('operability_context_')

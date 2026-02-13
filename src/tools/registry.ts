@@ -71,6 +71,8 @@ import {
 } from '../agent/approval';
 import { loadConfig } from '../utils/config';
 import { createKubernetesClient } from '../providers/kubernetes/client';
+import { findGitHubFixCandidates } from './code/github';
+import { findGitLabFixCandidates } from './code/gitlab';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -1857,6 +1859,210 @@ export const kubernetesQueryTool = defineTool(
   }
 );
 
+/**
+ * GitHub Query Tool
+ *
+ * Finds likely code-fix pointers (code matches, PRs, issues) for incident remediation.
+ */
+export const githubQueryTool = defineTool(
+  'github_query',
+  `Query GitHub for likely code-fix candidates tied to an incident or root cause.
+
+   Use for:
+   - Finding recent PRs/issues related to a production failure
+   - Locating code paths touched by similar fixes
+   - Linking remediation steps to concrete code references`,
+  {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'GitHub action to perform',
+        enum: ['fix_candidates'],
+      },
+      query: {
+        type: 'string',
+        description: 'Root-cause or remediation query text',
+      },
+      services: {
+        type: 'array',
+        description: 'Optional service names to improve relevance',
+        items: { type: 'string' },
+      },
+      limit: {
+        type: 'number',
+        description: 'Maximum number of candidates to return (default: 8, max: 20)',
+      },
+    },
+    required: ['action', 'query'],
+  },
+  async (args) => {
+    const config = await loadConfig();
+    if (!config.providers.github.enabled) {
+      return {
+        error:
+          'GitHub provider is disabled. Set providers.github.enabled: true to use github_query.',
+      };
+    }
+
+    const action = String(args.action || 'fix_candidates');
+    if (action !== 'fix_candidates') {
+      return { error: `Unsupported github_query action: ${action}` };
+    }
+
+    const query = String(args.query || '').trim();
+    if (!query) {
+      return { error: 'query is required for github_query action=fix_candidates.' };
+    }
+
+    const token =
+      config.providers.github.token || process.env.RUNBOOK_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
+    const repository = config.providers.github.repository || process.env.RUNBOOK_GITHUB_REPOSITORY;
+
+    if (!token) {
+      return {
+        error:
+          'GitHub token not configured. Set providers.github.token, RUNBOOK_GITHUB_TOKEN, or GITHUB_TOKEN.',
+      };
+    }
+
+    if (!repository) {
+      return {
+        error:
+          'GitHub repository not configured. Set providers.github.repository (owner/repo) or RUNBOOK_GITHUB_REPOSITORY.',
+      };
+    }
+
+    const services = Array.isArray(args.services)
+      ? args.services
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+
+    const parsedLimit = typeof args.limit === 'number' ? args.limit : 8;
+    const limit = Math.max(1, Math.min(20, Math.round(parsedLimit)));
+
+    try {
+      return await findGitHubFixCandidates({
+        token,
+        repository,
+        query,
+        services,
+        limit,
+        baseUrl: config.providers.github.baseUrl,
+        timeoutMs: config.providers.github.timeoutMs,
+      });
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown GitHub query error',
+      };
+    }
+  }
+);
+
+/**
+ * GitLab Query Tool
+ *
+ * Finds likely code-fix pointers (code matches, MRs, issues) for incident remediation.
+ */
+export const gitlabQueryTool = defineTool(
+  'gitlab_query',
+  `Query GitLab for likely code-fix candidates tied to an incident or root cause.
+
+   Use for:
+   - Finding recent merge requests/issues related to a production failure
+   - Locating code paths touched by similar fixes
+   - Linking remediation steps to concrete code references`,
+  {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'GitLab action to perform',
+        enum: ['fix_candidates'],
+      },
+      query: {
+        type: 'string',
+        description: 'Root-cause or remediation query text',
+      },
+      services: {
+        type: 'array',
+        description: 'Optional service names to improve relevance',
+        items: { type: 'string' },
+      },
+      limit: {
+        type: 'number',
+        description: 'Maximum number of candidates to return (default: 8, max: 20)',
+      },
+    },
+    required: ['action', 'query'],
+  },
+  async (args) => {
+    const config = await loadConfig();
+    if (!config.providers.gitlab.enabled) {
+      return {
+        error:
+          'GitLab provider is disabled. Set providers.gitlab.enabled: true to use gitlab_query.',
+      };
+    }
+
+    const action = String(args.action || 'fix_candidates');
+    if (action !== 'fix_candidates') {
+      return { error: `Unsupported gitlab_query action: ${action}` };
+    }
+
+    const query = String(args.query || '').trim();
+    if (!query) {
+      return { error: 'query is required for gitlab_query action=fix_candidates.' };
+    }
+
+    const token =
+      config.providers.gitlab.token || process.env.RUNBOOK_GITLAB_TOKEN || process.env.GITLAB_TOKEN;
+    const project = config.providers.gitlab.project || process.env.RUNBOOK_GITLAB_PROJECT;
+
+    if (!token) {
+      return {
+        error:
+          'GitLab token not configured. Set providers.gitlab.token, RUNBOOK_GITLAB_TOKEN, or GITLAB_TOKEN.',
+      };
+    }
+
+    if (!project) {
+      return {
+        error:
+          'GitLab project not configured. Set providers.gitlab.project (project ID/path) or RUNBOOK_GITLAB_PROJECT.',
+      };
+    }
+
+    const services = Array.isArray(args.services)
+      ? args.services
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+
+    const parsedLimit = typeof args.limit === 'number' ? args.limit : 8;
+    const limit = Math.max(1, Math.min(20, Math.round(parsedLimit)));
+
+    try {
+      return await findGitLabFixCandidates({
+        token,
+        project,
+        query,
+        services,
+        limit,
+        baseUrl: config.providers.gitlab.baseUrl,
+        timeoutMs: config.providers.gitlab.timeoutMs,
+      });
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Unknown GitLab query error',
+      };
+    }
+  }
+);
+
 // Register default tools
 toolRegistry.registerCategory('aws', 'AWS Cloud Operations', [
   awsQueryTool,
@@ -1867,6 +2073,7 @@ toolRegistry.registerCategory('aws', 'AWS Cloud Operations', [
 ]);
 
 toolRegistry.registerCategory('kubernetes', 'Kubernetes Cluster Operations', [kubernetesQueryTool]);
+toolRegistry.registerCategory('code', 'Code Fix Intelligence', [githubQueryTool, gitlabQueryTool]);
 
 /**
  * Prometheus Query Tool

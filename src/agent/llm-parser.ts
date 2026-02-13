@@ -154,6 +154,12 @@ export const RemediationPlanSchema = z.object({
         .optional()
         .transform((value) => value ?? undefined)
         .describe('Command to undo this step'),
+      codeReference: z
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value ?? undefined)
+        .describe('URL to code, PR/MR, or issue supporting this step'),
       riskLevel: z.enum(['low', 'medium', 'high', 'critical']),
       requiresApproval: z.boolean(),
       matchingSkill: z
@@ -375,6 +381,7 @@ export function toRemediationSteps(input: RemediationPlanInput): RemediationStep
     description: step.description,
     command: step.command,
     rollbackCommand: step.rollbackCommand,
+    codeReference: step.codeReference,
     riskLevel: step.riskLevel,
     requiresApproval: step.requiresApproval,
     status: 'pending' as const,
@@ -497,6 +504,9 @@ Available Skills:
 Available Runbooks:
 {runbooks}
 
+Available Code Fix Candidates:
+{codeFixes}
+
 Requirements:
 - Steps must be actionable and specific for the affected services above.
 - Every step must include either:
@@ -504,6 +514,7 @@ Requirements:
   2) a concrete command with exact resource names/IDs (no placeholders like <service>).
 - If command is provided, include rollbackCommand whenever rollback is possible.
 - Use available runbooks to shape procedures and set matchingRunbook when relevant.
+- Use code fix candidates when relevant and set codeReference to the supporting URL.
 - Avoid vague steps such as "check logs" or "investigate further" without concrete actions.
 
 Respond with a JSON object matching this schema:
@@ -512,6 +523,7 @@ Respond with a JSON object matching this schema:
   - description: Detailed description
   - command: Optional CLI command
   - rollbackCommand: Optional rollback command
+  - codeReference: Optional URL to related code/PR/MR/issue
   - riskLevel: "low" | "medium" | "high" | "critical"
   - requiresApproval: boolean
   - matchingSkill: Optional skill that can execute this

@@ -115,6 +115,7 @@ export interface RemediationStep {
   description: string;
   command?: string;
   rollbackCommand?: string;
+  codeReference?: string;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   requiresApproval: boolean;
   status: 'pending' | 'approved' | 'executing' | 'completed' | 'failed' | 'skipped';
